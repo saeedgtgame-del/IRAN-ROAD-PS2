@@ -24,6 +24,19 @@ jobs:
           curl -fL --retry 3 https://github.com/ps2dev/ps2dev/releases/download/latest/ps2dev-ubuntu-latest.tar.gz -o /tmp/ps2dev.tar.gz
           sudo tar -xzf /tmp/ps2dev.tar.gz --strip-components 1 -C /usr/local/ps2dev
 
+      - name: Build and install gsKit
+        run: |
+          export PS2DEV=/usr/local/ps2dev
+          export PS2SDK=$PS2DEV/ps2sdk
+          export GSKIT=$PS2DEV/gsKit
+          export PATH=$PATH:$PS2DEV/bin:$PS2DEV/ee/bin:$PS2DEV/iop/bin:$PS2DEV/dvp/bin:$PS2SDK/bin
+          rm -rf "$GSKIT"
+          git clone --depth 1 https://github.com/ps2dev/gsKit.git "$GSKIT"
+          make -C "$GSKIT"
+          make -C "$GSKIT" install
+          test -s "$PS2SDK/ports/include/gsKit.h"
+          test -s "$PS2SDK/ports/lib/libgskit.a"
+
       - name: Build ELF
         run: |
           export PS2DEV=/usr/local/ps2dev
