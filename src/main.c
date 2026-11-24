@@ -225,7 +225,6 @@ static void controls(void){
    int cost=500*(engineStage[currentVehicle]+1);
    if(upgradeCredits>=cost){upgradeCredits-=cost;engineStage[currentVehicle]++;}
   }
-  if(pressed&PAD_CIRCLE)upgradeMenu=0;
  }
  if(pressed&PAD_L1)weather=(weather+1)%3;
  if(pressed&PAD_CIRCLE && !upgradeMenu){
