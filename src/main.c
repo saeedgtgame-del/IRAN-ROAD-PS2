@@ -9,7 +9,7 @@
 #define MAX_NPC 7
 static GSGLOBAL *gs;
 static char padBuf[256] __attribute__((aligned(64)));
-static padButtonStatus pad;
+static struct padButtonStatus pad;
 static float playerX=0.0f, speedKmh=0.0f, roadScroll=0.0f, throttle=0.0f;
 static int headlights=0, weather=0, nightMode=0;
 static u16 previousButtons=0xFFFF;
