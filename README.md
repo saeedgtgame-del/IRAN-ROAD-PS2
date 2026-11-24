@@ -13,6 +13,22 @@ Samand LX, Peugeot 206, Peugeot 207, Samand Soren, Dena Plus, Peugeot Pars, Peug
 
 Each vehicle has a different base top speed and acceleration. Engine upgrade stages add performance, with a gameplay cap of 350 km/h.
 
+## Current controller mapping
+
+| PS2 button | Action |
+|---|---|
+| X | Accelerate |
+| Square | Brake |
+| Left / Right | Steer |
+| Select | Select next car |
+| Start | Upgrade selected engine (up to five stages) |
+| R2 | Cycle dry / rain / fog |
+| Circle, three quick presses | Send a nearby traffic challenge signal |
+| R1 / L1 | Headlights on / off |
+| Triangle | Toggle day / night |
+
+Paint color cycles in the current prototype. The three-honk feature is only a visual challenge-state prototype; horn audio and full rival race behavior are not implemented yet.
+
 ## Build
 Requires PS2SDK, gsKit, dmaKit and pad libraries. Run `make` in a PS2SDK environment. The target is `IRANROAD.ELF`.
 
