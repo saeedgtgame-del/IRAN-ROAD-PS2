@@ -19,8 +19,8 @@ static int hornCount=0, hornWindow=0, raceChallenge=0, raceTarget=-1;
 typedef struct { float x,z,v; int color,style,model,direction; } TrafficCar;
 /* v is each NPC's own road speed in km/h; direction -1 is oncoming traffic. */
 static TrafficCar traffic[MAX_NPC]={
- {-1.25f,18,72,0,0,0, 1},{1.25f,29,94,1,1,1, 1},{0,43,68,2,0,2,-1},
- {-2.5f,57,105,3,1,3,1},{2.5f,71,82,4,0,4,-1},{-1.25f,88,115,5,1,5,1},{1.25f,105,62,6,0,6,-1}
+ {-1.25f,18,72,0,0,0, 1},{1.25f,29,94,1,1,1, 1},{0,43,68,2,0,2, 1},
+ {-2.5f,57,105,3,1,3,1},{2.5f,71,82,4,0,4, 1},{-1.25f,88,115,5,1,5,1},{1.25f,105,62,6,0,6, 1}
 };
 
 static u64 col(u8 r,u8 g,u8 b){ return GS_SETREG_RGBAQ(r,g,b,0x80,0); }
@@ -150,15 +150,17 @@ static void drawRoad(void){
  u64 sky=nightMode?col(8,15,30):(weather==2?col(145,155,160):(weather==1?col(80,105,125):col(105,170,205)));
  gsKit_prim_sprite(gs,0,0,(float)gs->Width,horizon,1,sky);
  gsKit_prim_sprite(gs,0,horizon,(float)gs->Width,(float)gs->Height,1,nightMode?col(18,28,20):col(55,112,55));
- face(-8,0,3,8,0,3,8,0,150,-8,0,150,col(75,77,80));
- face(-8.35f,0,3,-8,0,3,-8,0,150,-8.35f,0,150,col(220,210,180));
- face(8,0,3,8.35f,0,3,8.35f,0,150,8,0,150,col(220,210,180));
+ /* Asphalt extends to the bottom edge; grass stays roadside. */
+ face(-5.2f,-1.62f,3,5.2f,-1.62f,3,5.2f,-1.62f,150,-5.2f,-1.62f,150,col(61,63,66));
+ face(-5.55f,-1.62f,3,-5.2f,-1.62f,3,-5.2f,-1.62f,150,-5.55f,-1.62f,150,col(205,195,165));
+ face(5.2f,-1.62f,3,5.55f,-1.62f,3,5.55f,-1.62f,150,5.2f,-1.62f,150,col(205,195,165));
  for(int i=0;i<18;i++){
-  float z=5.0f+(float)i*7.0f+roadScroll;
-  while(z>130)z-=126;
+  float z=5.0f+(float)i*7.0f-roadScroll;
+  while(z<5.0f)z+=126.0f;
+  while(z>131.0f)z-=126.0f;
   for(int lane=-1;lane<=1;lane++){
    float lx=(float)lane*2.0f;
-   face(lx-.035f,.015f,z,lx+.035f,.015f,z,lx+.035f,.015f,z+2.5f,lx-.035f,.015f,z+2.5f,col(225,225,205));
+   face(lx-.035f,-1.58f,z,lx+.035f,-1.58f,z,lx+.035f,-1.58f,z+2.5f,lx-.035f,-1.58f,z+2.5f,col(225,225,205));
   }
  }
  if(weather==1){
@@ -182,20 +184,22 @@ static void drawHud(void){
 }
 static void initPad(void){ padInit(0); padPortOpen(0,0,padBuf); }
 static void controls(void){
- if(!padRead(0,0,&pad)){ brakeActive=0; return; }
- brakeActive=(!(pad.btns&PAD_SQUARE));
+ if(!padRead(0,0,&pad)){ brakeActive=0; throttle=0.0f; return; }
+ /* R2 accelerates, L2 brakes; left analog stick steers. */
+ brakeActive=(!(pad.btns&PAD_L2));
  u16 pressed=(u16)((~pad.btns)&previousButtons);
  previousButtons=pad.btns;
- if(!(pad.btns&PAD_LEFT))playerX-=.055f;
- if(!(pad.btns&PAD_RIGHT))playerX+=.055f;
+ int stick=(int)pad.ljoy_h-128;
+ if(stick>-12 && stick<12)stick=0;
+ playerX+=((float)stick/127.0f)*.075f;
  if(playerX< -3.1f)playerX=-3.1f;
  if(playerX>3.1f)playerX=3.1f;
- if(!(pad.btns&PAD_CROSS))throttle+=.006f;else throttle-=.003f;
- if(!(pad.btns&PAD_SQUARE))throttle-=.012f;
+ if(!(pad.btns&PAD_R2))throttle+=.010f;else throttle-=.006f;
+ if(brakeActive)throttle=0.0f;
  if(throttle<0)throttle=0;if(throttle>1)throttle=1;
  if(pressed&PAD_SELECT){ currentVehicle=(currentVehicle+1)%VEHICLE_COUNT; speedKmh=0.0f; throttle=0.0f; }
  if(pressed&PAD_START && engineStage[currentVehicle]<ENGINE_UPGRADE_STAGES)engineStage[currentVehicle]++;
- if(pressed&PAD_R2)weather=(weather+1)%3;
+ if(pressed&PAD_L1)weather=(weather+1)%3;
  if(pressed&PAD_CIRCLE){
   if(hornWindow<=0)hornCount=0;
   hornCount++; hornWindow=55;
@@ -208,8 +212,7 @@ static void controls(void){
    hornCount=0; hornWindow=0;
   }
  }
- if(pressed&PAD_R1)headlights=1;
- if(pressed&PAD_L1)headlights=0;
+ if(pressed&PAD_R1)headlights=!headlights;
  if(pressed&PAD_TRIANGLE)nightMode=!nightMode;
 
 }
@@ -227,14 +230,14 @@ int main(int argc,char *argv[]){
   if(hornWindow>0)hornWindow--;
   if(brakeActive){
    /* Progressive road-car braking: decelerates firmly without snapping to zero. */
-   speedKmh-=0.22f+(speedKmh*.0030f);
+   speedKmh-=0.42f+(speedKmh*.0045f);
    if(speedKmh<0)speedKmh=0;
   }else{
    speedKmh+=(throttle*(1.25f+vehicle_acceleration(currentVehicle,engineStage[currentVehicle])))-.10f;
    if(speedKmh<0)speedKmh=0;
   }
   if(speedKmh>vehicle_top_speed(currentVehicle,engineStage[currentVehicle]))speedKmh=vehicle_top_speed(currentVehicle,engineStage[currentVehicle]);
-  roadScroll+=speedKmh*.0009f;if(roadScroll>7)roadScroll-=7;
+  roadScroll+=speedKmh*.0009f;if(roadScroll>126.0f)roadScroll-=126.0f;
   for(int i=0;i<MAX_NPC;i++){
    /* Relative motion: same-direction cars can pull away or be overtaken.
       Oncoming cars approach faster; NPCs are never frozen with player braking. */
