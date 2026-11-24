@@ -425,7 +425,8 @@ int main(int argc,char *argv[]){
  gs->Mode=GS_MODE_NTSC;gs->Interlace=GS_INTERLACED;gs->Field=GS_FIELD;
  gs->Width=640;gs->Height=448;gs->PSM=GS_PSM_CT16;gs->PSMZ=GS_PSMZ_16;
  gsKit_init_screen(gs);gsKit_mode_switch(gs,GS_PERSISTENT);gsKit_set_test(gs,GS_ZTEST_OFF);
- initMaterialTextures();\n initPad();
+ initMaterialTextures();
+ initPad();
  for(;;){
   controls();
   if(hornWindow>0)hornWindow--;
