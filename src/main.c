@@ -37,11 +37,34 @@ static int project(float x,float y,float z,float *sx,float *sy){
  *sy=horizon+(1.62f-y)*focal/z;
  return 1;
 }
+static u64 litColor(u64 color,float ax,float ay,float az,
+                    float bx,float by,float bz,float cx,float cy,float cz){
+ float ux=bx-ax, uy=by-ay, uz=bz-az;
+ float vx=cx-ax, vy=cy-ay, vz=cz-az;
+ float nx=uy*vz-uz*vy, ny=uz*vx-ux*vz, nz=ux*vy-uy*vx;
+ float nl=sqrtf(nx*nx+ny*ny+nz*nz), light=0.0f;
+ if(nl>0.0001f){
+  nx/=nl; ny/=nl; nz/=nl;
+  light=fabsf(nx*.34f+ny*.82f+nz*-.46f);
+ }
+ float shade=.62f+.38f*light;
+ if(nightMode)shade*=.78f;
+ if(weather==2)shade*=.91f;
+ unsigned int r=(unsigned int)(color&255u);
+ unsigned int g=(unsigned int)((color>>8)&255u);
+ unsigned int b=(unsigned int)((color>>16)&255u);
+ r=(unsigned int)(r*shade); g=(unsigned int)(g*shade); b=(unsigned int)(b*shade);
+ if(r>255u)r=255u;
+ if(g>255u)g=255u;
+ if(b>255u)b=255u;
+ return col((u8)r,(u8)g,(u8)b);
+}
 static void face(float ax,float ay,float az,float bx,float by,float bz,
  float cx,float cy,float cz,float dx,float dy,float dz,u64 color){
  float x1,y1,x2,y2,x3,y3,x4,y4;
  if(!project(ax,ay,az,&x1,&y1)||!project(bx,by,bz,&x2,&y2)||
  !project(cx,cy,cz,&x3,&y3)||!project(dx,dy,dz,&x4,&y4))return;
+ color=litColor(color,ax,ay,az,bx,by,bz,cx,cy,cz);
  quad(x1,y1,x2,y2,x3,y3,x4,y4,color);
 }
 static u64 trafficColor(int c){
@@ -49,17 +72,25 @@ static u64 trafficColor(int c){
  return col(colors[c%7][0],colors[c%7][1],colors[c%7][2]);
 }
 static void drawCar(float x,float z,float len,float width,u64 body,int model,int player,int tuned){
- /* Detailed low-poly vehicle assembly. Front points toward +Z. */
+ /* Per-model polygon body assembly with material groups and directional shading. */
  float half=width*.5f, rear=z, front=z+len;
  float floorY=.10f, beltY=.73f, hoodY=.47f;
  float cabRear=z+len*.28f, cabFront=z+len*.69f;
  float roofY=1.28f, wheelR=.25f;
+ static const float roofProfile[VEHICLE_COUNT]={1.25f,1.19f,1.21f,1.29f,1.34f,1.25f,1.23f,1.10f,1.34f,1.22f};
+ static const float cabinRear[VEHICLE_COUNT]={.29f,.22f,.23f,.30f,.31f,.29f,.28f,.22f,.30f,.43f};
+ static const float cabinFront[VEHICLE_COUNT]={.70f,.70f,.71f,.69f,.70f,.69f,.69f,.70f,.70f,.78f};
+ static const float cabinWidth[VEHICLE_COUNT]={.58f,.60f,.61f,.57f,.59f,.58f,.57f,.61f,.58f,.58f};
+ static const float bodyWidth[VEHICLE_COUNT]={1.00f,.98f,1.00f,1.00f,1.02f,.99f,.99f,.94f,1.02f,1.00f};
  int hatch=(model==1||model==2||model==7);
  int pickup=(model==9);
- if(hatch){cabRear=z+len*.22f;cabFront=z+len*.70f;roofY=model==7?1.10f:1.19f;}
- if(model==7){half*=.94f;hoodY=.43f;}
- if(pickup){cabRear=z+len*.43f;cabFront=z+len*.78f;roofY=1.22f;beltY=.78f;}
- if(model==4||model==8){roofY=1.34f;half*=1.02f;}
+ half*=bodyWidth[model];
+ cabRear=z+len*cabinRear[model];
+ cabFront=z+len*cabinFront[model];
+ roofY=roofProfile[model];
+ if(model==7)hoodY=.43f;
+ if(pickup)beltY=.78f;
+ float roofHalf=half*cabinWidth[model];
  u64 tire=col(10,11,13),rubber=col(24,25,27),rim=col(145,150,155);
  u64 glass=col(31,62,82),glassHi=col(78,112,130);
  u64 trim=col(25,27,30),chrome=col(170,175,178);
@@ -80,9 +111,9 @@ static void drawCar(float x,float z,float len,float width,u64 body,int model,int
       x+half*.96f,floorY+.23f,front-.06f,x-half*.96f,floorY+.23f,front-.06f,trim);
  /* Roof, windshield, rear glass and side windows. */
  face(x-half*.78f,beltY,cabRear,x+half*.78f,beltY,cabRear,
-      x+half*.58f,roofY,cabFront,x-half*.58f,roofY,cabFront,glass);
+      x+roofHalf,roofY,cabFront,x-roofHalf,roofY,cabFront,glass);
  face(x-half*.58f,roofY,cabFront,x+half*.58f,roofY,cabFront,
-      x+half*.52f,roofY,cabRear,x-half*.52f,roofY,cabRear,body);
+      x+roofHalf*.90f,roofY,cabRear,x-roofHalf*.90f,roofY,cabRear,body);
  face(x-half*.58f,roofY,cabRear,x+half*.52f,roofY,cabRear,
       x+half*.52f,roofY,cabFront,x-half*.58f,roofY,cabFront,glass);
  face(x-half*.80f,beltY,cabRear,x-half*.58f,roofY,cabRear,
@@ -93,7 +124,7 @@ static void drawCar(float x,float z,float len,float width,u64 body,int model,int
  for(int side=-1;side<=1;side+=2){
   float sx=x+(float)side*half*.80f;
   face(sx,beltY,cabRear+len*.035f,sx,beltY,cabRear+len*.065f,
-       sx*.0f+x+(float)side*half*.58f,roofY,cabRear+len*.065f,
+       sx*.0f+x+(float)side*roofHalf,roofY,cabRear+len*.065f,
        sx*.0f+x+(float)side*half*.58f,roofY,cabRear+len*.035f,trim);
   face(x+(float)side*half*.80f,beltY,cabFront-len*.06f,
        x+(float)side*half*.80f,beltY,cabFront-len*.025f,
@@ -331,6 +362,7 @@ static void controls(void){
   }
  }
  if(pressed&PAD_R1)headlights=!headlights;
+ if(pressed&PAD_RIGHT)paintIndex=(paintIndex+1)%8;
  if(pressed&PAD_TRIANGLE)nightMode=!nightMode;
 
 }
