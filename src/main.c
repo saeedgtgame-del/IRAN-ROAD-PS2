@@ -11,7 +11,7 @@ static GSGLOBAL *gs;
 static char padBuf[256] __attribute__((aligned(64)));
 static struct padButtonStatus pad;
 static float playerX=0.0f, speedKmh=0.0f, roadScroll=0.0f, throttle=0.0f;
-static int headlights=0, weather=0, nightMode=0;
+static int headlights=0, weather=0, nightMode=0, brakeActive=0;
 static u16 previousButtons=0xFFFF;
 static int currentVehicle=0, engineStage[VEHICLE_COUNT]={0}, paintIndex=0;
 static int hornCount=0, hornWindow=0, raceChallenge=0, raceTarget=-1;
@@ -27,10 +27,11 @@ static void quad(float a,float b,float c,float d,float e,float f,float g,float h
  gsKit_prim_quad(gs,a,b,c,d,e,f,g,h,2,color);
 }
 static int project(float x,float y,float z,float *sx,float *sy){
- float focal=265.0f, horizon=(float)gs->Height*.39f;
+ /* Chase camera: elevated, slightly downward-looking, centered behind the car. */
+ float focal=300.0f, horizon=(float)gs->Height*.345f;
  if(z<1.0f)return 0;
- *sx=(float)gs->Width*.5f+(x-playerX*.20f)*focal/z;
- *sy=horizon+(1.15f-y)*focal/z;
+ *sx=(float)gs->Width*.5f+(x-playerX*.13f)*focal/z;
+ *sy=horizon+(1.48f-y)*focal/z;
  return 1;
 }
 static void face(float ax,float ay,float az,float bx,float by,float bz,
@@ -45,21 +46,82 @@ static u64 trafficColor(int c){
  return col(colors[c%7][0],colors[c%7][1],colors[c%7][2]);
 }
 static void drawCar(float x,float z,float len,float width,u64 body,int player,int tuned){
- float half=width*.5f, rear=z, front=z+len, y0=.12f, y1=player?.78f:.68f;
- float cb=z+len*.30f, cf=z+len*.73f, roof=y1+.52f;
- u64 dark=col(22,24,27),glass=col(45,78,100),lamp=col(245,225,160);
- face(x-half-.08f,y0,rear+len*.18f,x-half-.08f,y0+.30f,rear+len*.18f,x-half-.08f,y0+.30f,front-len*.18f,x-half-.08f,y0,front-len*.18f,dark);
- face(x+half+.08f,y0,rear+len*.18f,x+half+.08f,y0+.30f,rear+len*.18f,x+half+.08f,y0+.30f,front-len*.18f,x+half+.08f,y0,front-len*.18f,dark);
- face(x-half,y0,rear,x-half,y1,rear,x-half,y1,front,x-half,y0,front,body);
- face(x+half,y0,rear,x+half,y1,rear,x+half,y1,front,x+half,y0,front,body);
- face(x-half,y1,front,x+half,y1,front,x+half,y1,front-len*.28f,x-half,y1,front-len*.28f,body);
- face(x-half*.76f,y1,cb,x+half*.76f,y1,cb,x+half*.58f,roof,cf,x-half*.58f,roof,cf,body);
- face(x-half*.58f,roof,cf,x+half*.58f,roof,cf,x+half*.48f,roof,cb,x-half*.48f,roof,cb,glass);
- face(x-half*.76f,y1,cb,x-half*.58f,roof,cb,x-half*.58f,roof,cf,x-half*.76f,y1,cf,glass);
- face(x+half*.76f,y1,cb,x+half*.58f,roof,cb,x+half*.58f,roof,cf,x+half*.76f,y1,cf,glass);
- face(x-half*.82f,y0+.24f,front+.01f,x-half*.82f,y0+.43f,front+.01f,x-half*.35f,y0+.43f,front+.01f,x-half*.35f,y0+.24f,front+.01f,headlights||player?lamp:col(95,85,60));
- face(x+half*.35f,y0+.24f,front+.01f,x+half*.35f,y0+.43f,front+.01f,x+half*.82f,y0+.43f,front+.01f,x+half*.82f,y0+.24f,front+.01f,headlights||player?lamp:col(95,85,60));
- if(tuned)face(x-half*.9f,y1+.04f,rear+.10f,x+half*.9f,y1+.04f,rear+.10f,x+half*.9f,y1+.12f,rear+.10f,x-half*.9f,y1+.12f,rear+.10f,col(25,25,28));
+ /* Multi-part low-poly sedan/pickup silhouette, viewed from behind. */
+ float half=width*.5f, rear=z, front=z+len;
+ float floorY=.10f, beltY=.73f, hoodY=.47f;
+ float cabRear=z+len*.28f, cabFront=z+len*.69f;
+ float roofY=1.28f, wheelR=.25f;
+ u64 tire=col(12,13,15), rim=col(105,110,115), glass=col(35,68,88);
+ u64 trim=col(28,30,33), chrome=col(155,160,162);
+ u64 red=col(220,35,28), white=col(245,225,170);
+
+ /* Main lower body, rear panel and side panels. */
+ face(x-half,floorY,rear,x+half,floorY,rear,x+half,beltY,rear,x-half,beltY,rear,body);
+ face(x-half,floorY,rear,x-half,beltY,rear,x-half,beltY,front,x-half,floorY,front,body);
+ face(x+half,floorY,rear,x+half,beltY,rear,x+half,beltY,front,x+half,floorY,front,body);
+ face(x-half,floorY,front,x+half,floorY,front,x+half,hoodY,front,x-half,hoodY,front,body);
+ face(x-half,hoodY,front,x+half,hoodY,front,x+half,beltY,front-len*.20f,x-half,beltY,front-len*.20f,body);
+
+ /* Rear window, roof, windshield and side glass. */
+ face(x-half*.78f,beltY,cabRear,x+half*.78f,beltY,cabRear,
+      x+half*.58f,roofY,cabFront,x-half*.58f,roofY,cabFront,glass);
+ face(x-half*.58f,roofY,cabFront,x+half*.58f,roofY,cabFront,
+      x+half*.52f,roofY,cabRear,x-half*.52f,roofY,cabRear,body);
+ face(x-half*.58f,roofY,cabRear,x+half*.52f,roofY,cabRear,
+      x+half*.52f,roofY,cabFront,x-half*.58f,roofY,cabFront,glass);
+ face(x-half*.80f,beltY,cabRear,x-half*.58f,roofY,cabRear,
+      x-half*.58f,roofY,cabFront,x-half*.80f,beltY,cabFront,glass);
+ face(x+half*.80f,beltY,cabRear,x+half*.58f,roofY,cabRear,
+      x+half*.58f,roofY,cabFront,x+half*.80f,beltY,cabFront,glass);
+
+ /* Hood and trunk/deck planes make the body shape readable. */
+ face(x-half*.92f,beltY,front-len*.20f,x+half*.92f,beltY,front-len*.20f,
+      x+half*.88f,hoodY,front,x-half*.88f,hoodY,front,body);
+ face(x-half*.88f,hoodY,front,x+half*.88f,hoodY,front,
+      x+half*.78f,hoodY+.06f,front-len*.10f,x-half*.78f,hoodY+.06f,front-len*.10f,body);
+
+ /* Rear bumper, trunk line, license plate, tail lamps and front lamps. */
+ face(x-half*.94f,floorY+.08f,rear-.035f,x+half*.94f,floorY+.08f,rear-.035f,
+      x+half*.94f,floorY+.22f,rear-.035f,x-half*.94f,floorY+.22f,rear-.035f,chrome);
+ face(x-half*.88f,beltY*.70f,rear-.012f,x+half*.88f,beltY*.70f,rear-.012f,
+      x+half*.88f,beltY*.70f,rear+.025f,x-half*.88f,beltY*.70f,rear+.025f,trim);
+ face(x-half*.25f,floorY+.20f,rear-.045f,x+half*.25f,floorY+.20f,rear-.045f,
+      x+half*.25f,floorY+.34f,rear-.045f,x-half*.25f,floorY+.34f,rear-.045f,col(185,190,190));
+ face(x-half*.91f,floorY+.30f,rear-.05f,x-half*.52f,floorY+.30f,rear-.05f,
+      x-half*.52f,floorY+.58f,rear-.05f,x-half*.91f,floorY+.58f,rear-.05f,red);
+ face(x+half*.52f,floorY+.30f,rear-.05f,x+half*.91f,floorY+.30f,rear-.05f,
+      x+half*.91f,floorY+.58f,rear-.05f,x+half*.52f,floorY+.58f,rear-.05f,red);
+ face(x-half*.30f,floorY+.04f,front+.025f,x+half*.30f,floorY+.04f,front+.025f,
+      x+half*.30f,floorY+.15f,front+.025f,x-half*.30f,floorY+.15f,front+.025f,trim);
+ face(x-half*.88f,floorY+.24f,front+.035f,x-half*.42f,floorY+.24f,front+.035f,
+      x-half*.42f,floorY+.43f,front+.035f,x-half*.88f,floorY+.43f,front+.035f,white);
+ face(x+half*.42f,floorY+.24f,front+.035f,x+half*.88f,floorY+.24f,front+.035f,
+      x+half*.88f,floorY+.43f,front+.035f,x+half*.42f,floorY+.43f,front+.035f,white);
+
+ /* Four chunky tires and metallic hubs, visibly outside the body. */
+ for(int side=-1;side<=1;side+=2){
+  float wx=x+(float)side*(half+.035f);
+  for(int axle=0;axle<2;axle++){
+   float wz=axle?front-len*.22f:rear+len*.23f;
+   face(wx-.12f,floorY-.01f,wz-wheelR,wx+.12f,floorY-.01f,wz-wheelR,
+        wx+.12f,floorY+wheelR,wz-wheelR,wx-.12f,floorY+wheelR,wz-wheelR,tire);
+   face(wx-.075f,floorY+.055f,wz-wheelR-.012f,wx+.075f,floorY+.055f,wz-wheelR-.012f,
+        wx+.075f,floorY+.19f,wz-wheelR-.012f,wx-.075f,floorY+.19f,wz-wheelR-.012f,rim);
+  }
+ }
+ /* Side mirrors and door seams. */
+ for(int side=-1;side<=1;side+=2){
+  float sx=x+(float)side*half*1.04f;
+  face(sx-.055f,beltY-.03f,cabFront-.08f,sx+.055f,beltY-.03f,cabFront-.08f,
+       sx+.055f,beltY+.07f,cabFront-.08f,sx-.055f,beltY+.07f,cabFront-.08f,trim);
+  face(sx,beltY-.02f,cabRear+.03f,sx,beltY-.02f,cabFront-.04f,
+       sx,beltY+.01f,cabFront-.04f,sx,beltY+.01f,cabRear+.03f,trim);
+ }
+ if(tuned){
+  face(x-half*.92f,beltY+.04f,rear+.08f,x+half*.92f,beltY+.04f,rear+.08f,
+       x+half*.92f,beltY+.12f,rear+.08f,x-half*.92f,beltY+.12f,rear+.08f,trim);
+ }
+ (void)player;
 }
 static void drawRoad(void){
  float horizon=(float)gs->Height*.39f;
@@ -98,7 +160,8 @@ static void drawHud(void){
 }
 static void initPad(void){ padInit(0); padPortOpen(0,0,padBuf); }
 static void controls(void){
- if(!padRead(0,0,&pad))return;
+ if(!padRead(0,0,&pad)){ brakeActive=0; return; }
+ brakeActive=(!(pad.btns&PAD_SQUARE));
  u16 pressed=(u16)((~pad.btns)&previousButtons);
  previousButtons=pad.btns;
  if(!(pad.btns&PAD_LEFT))playerX-=.055f;
@@ -140,8 +203,14 @@ int main(int argc,char *argv[]){
  for(;;){
   controls();
   if(hornWindow>0)hornWindow--;
-  speedKmh+=(throttle*(1.25f+vehicle_acceleration(currentVehicle,engineStage[currentVehicle])))-.22f;
-  if(speedKmh<0)speedKmh=0;
+  if(brakeActive){
+   /* Strong, progressive service brake instead of the old barely-visible drag. */
+   speedKmh-=2.2f+(speedKmh*.035f);
+   if(speedKmh<0)speedKmh=0;
+  }else{
+   speedKmh+=(throttle*(1.25f+vehicle_acceleration(currentVehicle,engineStage[currentVehicle])))-.12f;
+   if(speedKmh<0)speedKmh=0;
+  }
   if(speedKmh>vehicle_top_speed(currentVehicle,engineStage[currentVehicle]))speedKmh=vehicle_top_speed(currentVehicle,engineStage[currentVehicle]);
   roadScroll+=speedKmh*.0009f;if(roadScroll>7)roadScroll-=7;
   for(int i=0;i<MAX_NPC;i++){
@@ -152,7 +221,7 @@ int main(int argc,char *argv[]){
   gsKit_clear(gs,nightMode?col(7,12,22):col(90,145,175));
   drawRoad();
   for(int i=0;i<MAX_NPC;i++)drawCar(traffic[i].x,traffic[i].z,VEHICLES[traffic[i].model].length*.72f,VEHICLES[traffic[i].model].width*.82f,trafficColor(traffic[i].color),0,traffic[i].style);
-  drawCar(playerX,5.8f,VEHICLES[currentVehicle].length,VEHICLES[currentVehicle].width,col(PAINTS[paintIndex][0],PAINTS[paintIndex][1],PAINTS[paintIndex][2]),1,engineStage[currentVehicle]>0);
+  drawCar(playerX,4.2f,VEHICLES[currentVehicle].length,VEHICLES[currentVehicle].width,col(PAINTS[paintIndex][0],PAINTS[paintIndex][1],PAINTS[paintIndex][2]),1,engineStage[currentVehicle]>0);
   drawHud();
   gsKit_queue_exec(gs);gsKit_sync_flip(gs);gsKit_queue_reset(gs->Per_Queue);
  }
