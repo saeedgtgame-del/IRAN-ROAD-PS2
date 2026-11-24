@@ -12,10 +12,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build with PS2SDK container
+
+      - name: Install host dependencies
         run: |
-          docker run --rm \
-            -v "$PWD:/src" \
-            -w /src \
-            ps2dev/ps2dev:latest \
-            sh -lc "apk add --no-cache make && make clean && make"
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake patch git texinfo flex bison gettext libgsl-dev libgmp-dev libmpfr-dev libmpc-dev zlib1g-dev autopoint
+
+      - name: Install prebuilt PS2 development toolchain
+        run: |
+          sudo mkdir -p /usr/local/ps2dev
+          curl -fL --retry 3 https://github.com/ps2dev/ps2dev/releases/download/latest/ps2dev-ubuntu-latest.tar.gz -o /tmp/ps2dev.tar.gz
+          sudo tar -xzf /tmp/ps2dev.tar.gz --strip-components 1 -C /usr/local/ps2dev
+
+      - name: Build ELF
+        run: |
+          export PS2DEV=/usr/local/ps2dev
+          export PS2SDK=$PS2DEV/ps2sdk
+          export GSKIT=$PS2DEV/gsKit
+          export PATH=$PATH:$PS2DEV/bin:$PS2DEV/ee/bin:$PS2DEV/iop/bin:$PS2DEV/dvp/bin:$PS2SDK/bin
+          make clean
+          make
+          test -s IRANROAD.ELF
+
+      - name: Upload ELF
+        uses: actions/upload-artifact@v4
+        with:
+          name: IRANROAD-PS2-ELF
+          path: IRANROAD.ELF
+          if-no-files-found: error
