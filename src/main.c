@@ -11,6 +11,7 @@ static char padBuf[256] __attribute__((aligned(64)));
 static padButtonStatus pad;
 static float playerX=0.0f, speedKmh=0.0f, roadScroll=0.0f, throttle=0.0f;
 static int headlights=0, weather=0, nightMode=0;
+static u16 previousButtons=0xFFFF;
 
 typedef struct { float x,z,v; int color,style; } TrafficCar;
 static TrafficCar traffic[MAX_NPC]={
@@ -84,18 +85,20 @@ static void drawHud(void){
 }
 static void initPad(void){ padInit(0); padPortOpen(0,0,padBuf); }
 static void controls(void){
- if(padRead(0,0,&pad))return;
- if(pad.btns&PAD_LEFT)playerX-=.055f;
- if(pad.btns&PAD_RIGHT)playerX+=.055f;
+ if(!padRead(0,0,&pad))return;
+ u16 pressed=(u16)((~pad.btns)&previousButtons);
+ previousButtons=pad.btns;
+ if(!(pad.btns&PAD_LEFT))playerX-=.055f;
+ if(!(pad.btns&PAD_RIGHT))playerX+=.055f;
  if(playerX< -3.1f)playerX=-3.1f;
  if(playerX>3.1f)playerX=3.1f;
- if(pad.btns&PAD_CROSS)throttle+=.006f;else throttle-=.003f;
- if(pad.btns&PAD_SQUARE)throttle-=.012f;
+ if(!(pad.btns&PAD_CROSS))throttle+=.006f;else throttle-=.003f;
+ if(!(pad.btns&PAD_SQUARE))throttle-=.012f;
  if(throttle<0)throttle=0;if(throttle>1)throttle=1;
- if(pad.btns&PAD_R1)headlights=1;
- if(pad.btns&PAD_L1)headlights=0;
- if(pad.btns&PAD_TRIANGLE)nightMode=!nightMode;
- if(pad.btns&PAD_CIRCLE)weather=(weather+1)%3;
+ if(pressed&PAD_R1)headlights=1;
+ if(pressed&PAD_L1)headlights=0;
+ if(pressed&PAD_TRIANGLE)nightMode=!nightMode;
+ if(pressed&PAD_CIRCLE)weather=(weather+1)%3;
 }
 int main(int argc,char *argv[]){
  (void)argc;(void)argv;
