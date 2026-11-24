@@ -77,25 +77,21 @@ static void drawCar(float x,float z,float len,float width,u64 body,int model,int
  float floorY=.10f, beltY=.73f, hoodY=.47f;
  float cabRear=z+len*.28f, cabFront=z+len*.69f;
  float roofY=1.28f, wheelR=.25f;
- static const float roofProfile[VEHICLE_COUNT]={1.25f,1.19f,1.21f,1.29f,1.34f,1.25f,1.23f,1.10f,1.34f,1.22f};
- static const float cabinRear[VEHICLE_COUNT]={.29f,.22f,.23f,.30f,.31f,.29f,.28f,.22f,.30f,.43f};
- static const float cabinFront[VEHICLE_COUNT]={.70f,.70f,.71f,.69f,.70f,.69f,.69f,.70f,.70f,.78f};
- static const float cabinWidth[VEHICLE_COUNT]={.58f,.60f,.61f,.57f,.59f,.58f,.57f,.61f,.58f,.58f};
- static const float bodyWidth[VEHICLE_COUNT]={1.00f,.98f,1.00f,1.00f,1.02f,.99f,.99f,.94f,1.02f,1.00f};
+ const VehicleShape *shape=&VEHICLE_SHAPES[model];
  int hatch=(model==1||model==2||model==7);
  int pickup=(model==9);
- half*=bodyWidth[model];
- cabRear=z+len*cabinRear[model];
- cabFront=z+len*cabinFront[model];
- roofY=roofProfile[model];
- if(model==7)hoodY=.43f;
- if(pickup)beltY=.78f;
- float roofHalf=half*cabinWidth[model];
+ half*=shape->wheelScale;
+ cabRear=z+len*shape->cabinRear;
+ cabFront=z+len*shape->cabinFront;
+ roofY=shape->roofHeight;
+ hoodY=shape->hoodHeight;
+ beltY=shape->beltHeight;
+ float roofHalf=half*shape->cabinWidth;
  u64 tire=col(10,11,13),rubber=col(24,25,27),rim=col(145,150,155);
- u64 glass=col(31,62,82),glassHi=col(78,112,130);
- u64 trim=col(25,27,30),chrome=col(170,175,178);
+ u64 glass=col(18+(shape->glassTint/4),35+(shape->glassTint/3),48+(shape->glassTint/2)),glassHi=col(78,112,130);
+ u64 trim=col(shape->trimTone,shape->trimTone+2,shape->trimTone+5),chrome=col(170,175,178);
  u64 red=col(220,30,24),amber=col(245,150,35),white=col(250,235,190);
- u64 darkBody=col(48,51,55),bodyHi=col(215,215,210);
+ unsigned int br=(unsigned int)(body&255u), bg=(unsigned int)((body>>8)&255u), bb=(unsigned int)((body>>16)&255u);\n u64 darkBody=col((u8)(br*.42f),(u8)(bg*.42f),(u8)(bb*.42f));\n u64 bodyHi=col((u8)(br>225?255:br+30),(u8)(bg>225?255:bg+30),(u8)(bb>225?255:bb+30));
  /* Soft ground shadow. */
  face(x-half*1.18f,.015f,rear-.16f,x+half*1.18f,.015f,rear-.16f,
       x+half*1.18f,.015f,front+.18f,x-half*1.18f,.015f,front+.18f,col(28,30,31));
@@ -103,7 +99,7 @@ static void drawCar(float x,float z,float len,float width,u64 body,int model,int
  face(x-half,floorY,rear,x+half,floorY,rear,x+half,beltY,rear,x-half,beltY,rear,body);
  face(x-half,floorY,rear,x-half,beltY,rear,x-half,beltY,front,x-half,floorY,front,body);
  face(x+half,floorY,rear,x+half,beltY,rear,x+half,beltY,front,x+half,floorY,front,body);
- face(x-half,floorY,front,x+half,floorY,front,x+half,hoodY,front,x-half,hoodY,front,body);
+ face(x-half*.90f,floorY,front+shape->frontNose,x+half*.90f,floorY,front+shape->frontNose,x+half*.82f,hoodY,front-len*.015f,x-half*.82f,hoodY,front-len*.015f,body);
  face(x-half,hoodY,front,x+half,hoodY,front,x+half,beltY,front-len*.20f,x-half,beltY,front-len*.20f,body);
  face(x-half*.96f,floorY+.10f,rear+.10f,x+half*.96f,floorY+.10f,rear+.10f,
       x+half*.96f,floorY+.22f,rear+.10f,x-half*.96f,floorY+.22f,rear+.10f,chrome);
@@ -155,7 +151,7 @@ static void drawCar(float x,float z,float len,float width,u64 body,int model,int
       x+half*.55f,hoodY+.035f,front-len*.13f,x+half*.48f,hoodY+.035f,front-len*.13f,bodyHi);
  face(x-half*.43f,floorY+.30f,front+.045f,x+half*.43f,floorY+.30f,front+.045f,
       x+half*.43f,floorY+.49f,front+.045f,x-half*.43f,floorY+.49f,front+.045f,trim);
- for(int k=0;k<5;k++){
+ for(int k=0;k<4;k++){
   float gy=floorY+.325f+(float)k*.032f;
   face(x-half*.37f,gy,front+.052f,x+half*.37f,gy,front+.052f,
        x+half*.37f,gy+.012f,front+.052f,x-half*.37f,gy+.012f,front+.052f,chrome);
@@ -180,9 +176,9 @@ static void drawCar(float x,float z,float len,float width,u64 body,int model,int
  for(int side=-1;side<=1;side+=2){
   float wx=x+(float)side*(half+.045f);
   for(int axle=0;axle<2;axle++){
-   float wz=axle?front-len*.22f:rear+len*.23f;
-   face(wx-.14f,floorY-.015f,wz-wheelR,wx+.14f,floorY-.015f,wz-wheelR,
-        wx+.14f,floorY+wheelR,wz-wheelR,wx-.14f,floorY+wheelR,wz-wheelR,tire);
+   float wz=axle?front-len*.22f:rear+len*.23f;\n   float wr=wheelR*shape->wheelScale;
+   face(wx-.14f,floorY-.015f,wz-wr,wx+.14f,floorY-.015f,wz-wheelR,
+        wx+.14f,floorY+wr,wz-wheelR,wx-.14f,floorY+wheelR,wz-wheelR,tire);
    face(wx-.105f,floorY+.035f,wz-wheelR-.018f,wx+.105f,floorY+.035f,wz-wheelR-.018f,
         wx+.105f,floorY+.22f,wz-wheelR-.018f,wx-.105f,floorY+.22f,wz-wheelR-.018f,rubber);
    face(wx-.075f,floorY+.07f,wz-wheelR-.03f,wx+.075f,floorY+.07f,wz-wheelR-.03f,
@@ -202,6 +198,21 @@ static void drawCar(float x,float z,float len,float width,u64 body,int model,int
        sx+(float)side*.11f,beltY+.07f,cabFront-.08f,sx,beltY+.07f,cabFront-.08f,trim);
   face(sx,floorY+.03f,rear+len*.16f,sx,floorY+.03f,rear+len*.24f,
        sx,floorY+.15f,rear+len*.24f,sx,floorY+.15f,rear+len*.16f,darkBody);
+ }
+ /* Paint-highlight ridges, model-specific rear deck and bumper surfaces. */
+ face(x-half*.72f,beltY*.78f,rear+len*.30f,
+      x-half*.70f,beltY*.78f,front-len*.20f,
+      x-half*.69f,beltY*.82f,front-len*.20f,
+      x-half*.71f,beltY*.82f,rear+len*.30f,bodyHi);
+ face(x+half*.72f,beltY*.78f,rear+len*.30f,
+      x+half*.70f,beltY*.78f,front-len*.20f,
+      x+half*.69f,beltY*.82f,front-len*.20f,
+      x+half*.71f,beltY*.82f,rear+len*.30f,bodyHi);
+ if(!pickup){
+  face(x-half*.72f,shape->rearDeckHeight,rear+len*.035f,
+       x+half*.72f,shape->rearDeckHeight,rear+len*.035f,
+       x+half*.70f,beltY,rear+len*.22f,
+       x-half*.70f,beltY,rear+len*.22f,body);
  }
  /* Front and rear registration plates, exhaust, spoiler/roof antenna. */
  face(x-half*.22f,floorY+.25f,front+.065f,x+half*.22f,floorY+.25f,front+.065f,
