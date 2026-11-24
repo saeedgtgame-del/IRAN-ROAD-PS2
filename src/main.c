@@ -133,7 +133,7 @@ static void drawCar(float x,float z,float len,float width,u64 body,int model,int
       x+half*.24f,floorY+.22f,front+.05f,x-half*.24f,floorY+.22f,front+.05f,darkBody);
  /* Headlights, indicators, fog lamps and rear light clusters. */
  for(int side=-1;side<=1;side+=2){
-  float sx=x+(float)side;
+  float sx=x+(float)side*half;
   face(sx-half*.88f,floorY+.28f,front+.055f,sx-half*.48f,floorY+.28f,front+.055f,
        sx-half*.48f,floorY+.43f,front+.055f,sx-half*.88f,floorY+.43f,front+.055f,white);
   face(sx-half*.88f,floorY+.25f,front+.058f,sx-half*.79f,floorY+.25f,front+.058f,
@@ -214,6 +214,55 @@ static void drawRoad(void){
    float gx=(float)side*9.35f;
    face(gx-.035f,-1.48f,z,gx+.035f,-1.48f,z,gx+.035f,-.45f,z,gx-.035f,-.45f,z,col(125,130,132));
    face(gx-.06f,-.62f,z,gx+.06f,-.62f,z,gx+.06f,-.38f,z+6.0f,gx-.06f,-.38f,z+6.0f,col(165,170,172));
+  }
+ }
+ /* Repeating roadside scenery: utility poles, trees and distant buildings. */
+ for(int i=0;i<12;i++){
+  float z=10.0f+(float)i*11.0f-roadScroll*1.35f;
+  while(z<5.0f)z+=132.0f;
+  while(z>138.0f)z-=132.0f;
+  for(int side=-1;side<=1;side+=2){
+   float sx=(float)side*(12.0f+(float)(i%3)*1.2f);
+   /* Tree trunk and layered crown, set beyond the guardrail. */
+   face(sx-.16f,-1.55f,z,sx+.16f,-1.55f,z,
+        sx+.10f,1.05f,z,sx-.10f,1.05f,z,col(92,66,43));
+   face(sx-.95f,.45f,z,sx+.95f,.45f,z,
+        sx+.62f,1.75f,z,sx-.62f,1.75f,z,col(35,105,53));
+   face(sx-.70f,1.10f,z,sx+.70f,1.10f,z,
+        sx+.42f,2.15f,z,sx-.42f,2.15f,z,col(48,128,61));
+   /* Tall roadside lamp pole and simple lamp head. */
+   float lx=(float)side*10.8f;
+   face(lx-.045f,-1.55f,z+4.0f,lx+.045f,-1.55f,z+4.0f,
+        lx+.045f,3.5f,z+4.0f,lx-.045f,3.5f,z+4.0f,col(105,110,112));
+   face(lx,3.35f,z+4.0f,lx+(float)side*.85f,3.35f,z+4.0f,
+        lx+(float)side*.85f,3.48f,z+4.0f,lx,3.48f,z+4.0f,col(125,130,135));
+   face(lx+(float)side*.72f,3.30f,z+4.0f,lx+(float)side*.98f,3.30f,z+4.0f,
+        lx+(float)side*.98f,3.40f,z+4.0f,lx+(float)side*.72f,3.40f,z+4.0f,
+        nightMode?col(245,215,135):col(180,185,175));
+  }
+  /* Low industrial/service buildings alternating along the horizon. */
+  if((i%3)==0){
+   float bx=(i%2)?-16.0f:16.0f;
+   face(bx-1.7f,-1.55f,z+5.0f,bx+1.7f,-1.55f,z+5.0f,
+        bx+1.7f,1.35f,z+5.0f,bx-1.7f,1.35f,z+5.0f,col(105,104,99));
+   face(bx-1.7f,1.35f,z+5.0f,bx+1.7f,1.35f,z+5.0f,
+        bx+1.25f,1.85f,z+5.0f,bx-1.25f,1.85f,z+5.0f,col(75,78,82));
+   for(int win=0;win<3;win++){
+    float wx=bx-1.15f+(float)win*.85f;
+    face(wx,-.55f,z+4.94f,wx+.42f,-.55f,z+4.94f,
+         wx+.42f,-.05f,z+4.94f,wx,-.05f,z+4.94f,col(145,175,185));
+   }
+  }
+ }
+ /* Shoulder rumble strips and reflective road studs. */
+ for(int i=0;i<24;i++){
+  float z=3.0f+(float)i*5.2f-roadScroll;
+  while(z<3.0f)z+=124.8f;
+  while(z>130.0f)z-=124.8f;
+  for(int side=-1;side<=1;side+=2){
+   float sx=(float)side*8.05f;
+   face(sx-.10f,-1.545f,z,sx+.10f,-1.545f,z,
+        sx+.10f,-1.545f,z+1.7f,sx-.10f,-1.545f,z+1.7f,col(205,205,190));
   }
  }
  if(weather==1)for(int r=0;r<24;r++){
