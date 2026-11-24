@@ -15,6 +15,8 @@ static int headlights=0, weather=0, nightMode=0, brakeActive=0;
 static u16 previousButtons=0xFFFF;
 static int currentVehicle=0, engineStage[VEHICLE_COUNT]={0}, paintIndex=0;
 static int hornCount=0, hornWindow=0, raceChallenge=0, raceTarget=-1;
+static int upgradeMenu=0, upgradeCredits=3000;
+static float creditProgress=0.0f;
 
 typedef struct { float x,z,v; int color,style,model,direction; } TrafficCar;
 /* v is each NPC's own road speed in km/h; direction -1 is oncoming traffic. */
@@ -149,26 +151,33 @@ static void drawRoad(void){
  float horizon=(float)gs->Height*.39f;
  u64 sky=nightMode?col(8,15,30):(weather==2?col(145,155,160):(weather==1?col(80,105,125):col(105,170,205)));
  gsKit_prim_sprite(gs,0,0,(float)gs->Width,horizon,1,sky);
- gsKit_prim_sprite(gs,0,horizon,(float)gs->Width,(float)gs->Height,1,nightMode?col(18,28,20):col(55,112,55));
- /* Asphalt extends to the bottom edge; grass stays roadside. */
- face(-5.2f,-1.62f,3,5.2f,-1.62f,3,5.2f,-1.62f,150,-5.2f,-1.62f,150,col(61,63,66));
- face(-5.55f,-1.62f,3,-5.2f,-1.62f,3,-5.2f,-1.62f,150,-5.55f,-1.62f,150,col(205,195,165));
- face(5.2f,-1.62f,3,5.55f,-1.62f,3,5.55f,-1.62f,150,5.2f,-1.62f,150,col(205,195,165));
- for(int i=0;i<18;i++){
-  float z=5.0f+(float)i*7.0f-roadScroll;
-  while(z<5.0f)z+=126.0f;
-  while(z>131.0f)z-=126.0f;
-  for(int lane=-1;lane<=1;lane++){
-   float lx=(float)lane*2.0f;
-   face(lx-.035f,-1.58f,z,lx+.035f,-1.58f,z,lx+.035f,-1.58f,z+2.5f,lx-.035f,-1.58f,z+2.5f,col(225,225,205));
+ gsKit_prim_sprite(gs,0,horizon,(float)gs->Width,(float)gs->Height,1,nightMode?col(16,25,19):col(58,105,48));
+ /* Broad highway asphalt and gravel shoulders. */
+ face(-9.0f,-1.62f,3,9.0f,-1.62f,3,9.0f,-1.62f,150,-9.0f,-1.62f,150,col(57,59,62));
+ face(-9.7f,-1.62f,3,-9.0f,-1.62f,3,-9.0f,-1.62f,150,-9.7f,-1.62f,150,col(112,108,94));
+ face(9.0f,-1.62f,3,9.7f,-1.62f,3,9.7f,-1.62f,150,9.0f,-1.62f,150,col(112,108,94));
+ face(-8.35f,-1.57f,3,-8.22f,-1.57f,3,-8.22f,-1.57f,150,-8.35f,-1.57f,150,col(235,230,210));
+ face(8.22f,-1.57f,3,8.35f,-1.57f,3,8.35f,-1.57f,150,8.22f,-1.57f,150,col(235,230,210));
+ for(int i=0;i<20;i++){
+  float z=4.0f+(float)i*6.3f-roadScroll;
+  while(z<3.5f)z+=126.0f;
+  while(z>130.0f)z-=126.0f;
+  for(int lane=-1;lane<=1;lane+=2){
+   float lx=(float)lane*2.75f;
+   face(lx-.075f,-1.565f,z,lx+.075f,-1.565f,z,lx+.075f,-1.565f,z+4.25f,lx-.075f,-1.565f,z+4.25f,col(238,237,222));
+  }
+  for(int side=-1;side<=1;side+=2){
+   float lx=(float)side*.12f;
+   face(lx-.045f,-1.56f,z,lx+.045f,-1.56f,z,lx+.045f,-1.56f,z+4.25f,lx-.045f,-1.56f,z+4.25f,col(238,190,48));
+   float gx=(float)side*9.35f;
+   face(gx-.035f,-1.48f,z,gx+.035f,-1.48f,z,gx+.035f,-.45f,z,gx-.035f,-.45f,z,col(125,130,132));
+   face(gx-.06f,-.62f,z,gx+.06f,-.62f,z,gx+.06f,-.38f,z+6.0f,gx-.06f,-.38f,z+6.0f,col(165,170,172));
   }
  }
- if(weather==1){
-  for(int r=0;r<24;r++){
-   float rx=(float)((r*37+(int)(roadScroll*90))%620);
-   float ry=(float)((r*53+(int)(roadScroll*170))%430);
-   gsKit_prim_sprite(gs,rx,ry,rx+1.0f,ry+9.0f,1,col(170,195,215));
-  }
+ if(weather==1)for(int r=0;r<24;r++){
+  float rx=(float)((r*37+(int)(roadScroll*90))%620);
+  float ry=(float)((r*53+(int)(roadScroll*170))%430);
+  gsKit_prim_sprite(gs,rx,ry,rx+1.0f,ry+9.0f,1,col(170,195,215));
  }
  if(weather==2)gsKit_prim_sprite(gs,0,horizon+55,(float)gs->Width,horizon+125,1,col(190,195,195));
 }
@@ -181,6 +190,17 @@ static void drawHud(void){
  if(headlights)gsKit_prim_sprite(gs,w-125,42,w-14,49,1,col(245,225,130));
  if(weather)gsKit_prim_sprite(gs,14,14,60,21,1,col(95,145,205));
  if(raceChallenge)gsKit_prim_sprite(gs,w-125,55,w-14,64,1,raceChallenge==1?col(45,190,90):col(190,65,45));
+ if(upgradeMenu){
+  gsKit_prim_sprite(gs,w*.27f,h*.24f,w*.73f,h*.72f,1,col(12,15,20));
+  gsKit_prim_sprite(gs,w*.30f,h*.30f,w*.70f,h*.34f,1,col(48,54,62));
+  for(int n=0;n<ENGINE_UPGRADE_STAGES;n++){
+   float x=w*.31f+(float)n*w*.076f;
+   gsKit_prim_sprite(gs,x,h*.40f,x+w*.064f,h*.49f,1,n<engineStage[currentVehicle]?col(240,170,35):col(75,82,92));
+  }
+  gsKit_prim_sprite(gs,w*.31f,h*.56f,w*.69f,h*.60f,1,col(42,45,50));
+  gsKit_prim_sprite(gs,w*.31f,h*.56f,w*.31f+(w*.38f)*((float)upgradeCredits/6000.0f),h*.60f,1,col(55,155,95));
+  gsKit_prim_sprite(gs,w*.31f,h*.65f,w*.69f,h*.68f,1,col(195,135,35));
+ }
 }
 static void initPad(void){ padInit(0); padPortOpen(0,0,padBuf); }
 static void controls(void){
@@ -192,15 +212,23 @@ static void controls(void){
  int stick=(int)pad.ljoy_h-128;
  if(stick>-12 && stick<12)stick=0;
  playerX+=((float)stick/127.0f)*.075f;
- if(playerX< -3.1f)playerX=-3.1f;
- if(playerX>3.1f)playerX=3.1f;
- if(!(pad.btns&PAD_R2))throttle+=.010f;else throttle-=.006f;
+ if(playerX< -6.0f)playerX=-6.0f;
+ if(playerX>6.0f)playerX=6.0f;
+ if(!(pad.btns&PAD_R2))throttle+=.018f;else throttle-=.004f;
  if(brakeActive)throttle=0.0f;
  if(throttle<0)throttle=0;if(throttle>1)throttle=1;
  if(pressed&PAD_SELECT){ currentVehicle=(currentVehicle+1)%VEHICLE_COUNT; speedKmh=0.0f; throttle=0.0f; }
- if(pressed&PAD_START && engineStage[currentVehicle]<ENGINE_UPGRADE_STAGES)engineStage[currentVehicle]++;
+ if(pressed&PAD_START)upgradeMenu=!upgradeMenu;
+ if(upgradeMenu){
+  throttle=0.0f;
+  if(pressed&PAD_CROSS && engineStage[currentVehicle]<ENGINE_UPGRADE_STAGES){
+   int cost=500*(engineStage[currentVehicle]+1);
+   if(upgradeCredits>=cost){upgradeCredits-=cost;engineStage[currentVehicle]++;}
+  }
+  if(pressed&PAD_CIRCLE)upgradeMenu=0;
+ }
  if(pressed&PAD_L1)weather=(weather+1)%3;
- if(pressed&PAD_CIRCLE){
+ if(pressed&PAD_CIRCLE && !upgradeMenu){
   if(hornWindow<=0)hornCount=0;
   hornCount++; hornWindow=55;
   if(hornCount>=3){
@@ -233,16 +261,18 @@ int main(int argc,char *argv[]){
    speedKmh-=0.42f+(speedKmh*.0045f);
    if(speedKmh<0)speedKmh=0;
   }else{
-   speedKmh+=(throttle*(1.25f+vehicle_acceleration(currentVehicle,engineStage[currentVehicle])))-.10f;
+   speedKmh+=(throttle*(2.05f+vehicle_acceleration(currentVehicle,engineStage[currentVehicle])*1.45f))-.045f;
    if(speedKmh<0)speedKmh=0;
   }
   if(speedKmh>vehicle_top_speed(currentVehicle,engineStage[currentVehicle]))speedKmh=vehicle_top_speed(currentVehicle,engineStage[currentVehicle]);
-  roadScroll+=speedKmh*.0009f;if(roadScroll>126.0f)roadScroll-=126.0f;
+  creditProgress+=speedKmh*.000006f;
+  if(creditProgress>=1.0f){upgradeCredits+=100;creditProgress-=1.0f;if(upgradeCredits>6000)upgradeCredits=6000;}
+  roadScroll+=speedKmh*.00145f;if(roadScroll>126.0f)roadScroll-=126.0f;
   for(int i=0;i<MAX_NPC;i++){
    /* Relative motion: same-direction cars can pull away or be overtaken.
       Oncoming cars approach faster; NPCs are never frozen with player braking. */
    float npcSignedSpeed=(float)traffic[i].direction*traffic[i].v;
-   traffic[i].z+=(npcSignedSpeed-speedKmh)*.0009f;
+   traffic[i].z+=(npcSignedSpeed-speedKmh)*.00145f;
    if(traffic[i].z<7.0f){
     traffic[i].z=112.0f+(float)(i*4);
     traffic[i].x=(float)((i%5)-2)*1.25f;
