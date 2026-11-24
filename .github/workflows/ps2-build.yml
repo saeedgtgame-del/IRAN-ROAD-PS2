@@ -1,0 +1,21 @@
+name: PS2 build check
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build with PS2SDK container
+        run: |
+          docker run --rm \
+            -v "$PWD:/src" \
+            -w /src \
+            ps2dev/ps2dev:latest \
+            bash -lc "make clean && make"
