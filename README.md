@@ -1,30 +1,22 @@
-# IRAN ROAD — PS2 3D Driving Prototype
+# IRAN ROAD — Iranian 3D Driving Game for PS2
 
-Native PlayStation 2 homebrew driving prototype written in C with PS2SDK and gsKit. This is a real-time perspective 3D prototype, not an HTML game.
+A native PlayStation 2 homebrew project written in C with PS2SDK and gsKit. It is not an HTML/browser game.
 
-## Current prototype
-- Perspective road and lane markings
-- Player car assembled from projected 3D faces
-- Seven traffic cars with different colors and movement rates
-- Acceleration, braking and steering
-- Headlight toggle, day/night toggle and weather state
-- Speed simulation capped at 350 km/h
+## Current repository contents
+- `src/main.c`: early perspective driving prototype and controller loop.
+- `src/vehicles.h`: ten Iranian vehicle gameplay profiles, per-car base speed/acceleration, five engine upgrade stages, and paint palette.
+- `Makefile`: PS2SDK build target.
+- `.github/workflows/ps2-build.yml`: automated build attempt using the PS2 development container.
 
-## Controls
-| PS2 button | Action |
-|---|---|
-| X | Accelerate |
-| Square | Brake |
-| Left / Right | Steer |
-| R1 | Headlights on |
-| L1 | Headlights off |
-| Triangle | Day / night |
-| Circle | Cycle weather |
+## Vehicle roster
+Samand LX, Peugeot 206, Peugeot 207, Samand Soren, Dena Plus, Peugeot Pars, Peugeot 405, Pride, Shahin, and Nissan Junior (blue pickup).
+
+Each vehicle has a different base top speed and acceleration. Engine upgrade stages add performance, with a gameplay cap of 350 km/h.
 
 ## Build
-Requires a PS2 development toolchain and PS2SDK with gsKit, dmaKit and pad libraries. Run make in the project directory.
+Requires PS2SDK, gsKit, dmaKit and pad libraries. Run `make` in a PS2SDK environment. The target is `IRANROAD.ELF`.
 
-The output target is IRANROAD.ELF. An ELF is a homebrew executable, not yet a bootable ISO. OPL-compatible ISO packaging requires a separate disc-image build step and testing on PCSX2 or real hardware.
+An ELF is not an OPL ISO. ISO packaging and testing on PCSX2 or a real PS2 are separate steps.
 
-## Status
-Early 3D prototype source. It has not yet been compiled or tested on PS2 hardware. Detailed Iranian car meshes, customization menus, vehicle-specific tuning, advanced traffic AI, weather rendering and final ISO packaging remain planned work.
+## Important status
+This is an early prototype and vehicle-data foundation, **not a finished game**. The current renderer uses simple low-polygon projected shapes. Dedicated accurate Iranian car meshes, full garage/customization menus, advanced traffic AI, three-honk race invitations, detailed weather, audio, collision polish, and final ISO packaging still need implementation and testing. The build workflow is included to check compilation; a successful build must be confirmed from its run result.
