@@ -4,10 +4,13 @@
 #include <dmaKit.h>
 #include <libpad.h>
 #include <math.h>
+#include <gsTexture.h>
 #include "vehicles.h"
 
 #define MAX_NPC 7
 static GSGLOBAL *gs;
+static GSTEXTURE materialTex[4];
+static u16 materialPixels[4][32*32] __attribute__((aligned(128)));
 static char padBuf[256] __attribute__((aligned(64)));
 static struct padButtonStatus pad;
 static float playerX=0.0f, speedKmh=0.0f, roadScroll=0.0f, throttle=0.0f;
@@ -67,6 +70,40 @@ static void face(float ax,float ay,float az,float bx,float by,float bz,
  color=litColor(color,ax,ay,az,bx,by,bz,cx,cy,cz);
  quad(x1,y1,x2,y2,x3,y3,x4,y4,color);
 }
+/* Four tiny procedural 32x32 material maps: glossy paint, tinted glass,
+   rubber grain and brushed metal. Together they occupy only 8 KiB of EE RAM
+   and 8 KiB of GS texture memory in CT16 format. */
+static void initMaterialTextures(void){
+ for(int m=0;m<4;m++){
+  for(int y=0;y<32;y++)for(int x=0;x<32;x++){
+   int v=31;
+   if(m==0){ if(y==5||y==6)v=31; else if(((x*7+y*3)&15)==0)v=28; else v=30; }
+   if(m==1){ v=18+(y/4); if((x+y*2)%17<2)v=29; }
+   if(m==2){ v=7+((x+y*3)%5); if((x%8)==0)v=12; }
+   if(m==3){ v=20+((y%5)*2); if((y%8)==0)v=31; }
+   u16 c;
+   if(m==1)c=(u16)(8u|((v+2u)<<5)|(v<<10)|0x8000u);
+   else if(m==2)c=(u16)(v|(v<<5)|(v<<10)|0x8000u);
+   else c=(u16)(v|(v<<5)|(v<<10)|0x8000u);
+   materialPixels[m][y*32+x]=c;
+  }
+  materialTex[m].Width=32; materialTex[m].Height=32;
+  materialTex[m].PSM=GS_PSM_CT16;
+  materialTex[m].Mem=materialPixels[m];
+  materialTex[m].Vram=gsKit_vram_alloc(gs,gsKit_texture_size(32,32,GS_PSM_CT16),GSKIT_ALLOC_USERBUFFER);
+  materialTex[m].Filter=GS_FILTER_NEAREST;
+  gsKit_texture_upload(gs,&materialTex[m]);
+ }
+}
+static void materialFace(int material,float ax,float ay,float az,
+ float bx,float by,float bz,float cx,float cy,float cz,
+ float dx,float dy,float dz,u64 color){
+ float x1,y1,x2,y2,x3,y3,x4,y4;
+ if(!project(ax,ay,az,&x1,&y1)||!project(bx,by,bz,&x2,&y2)||
+    !project(cx,cy,cz,&x3,&y3)||!project(dx,dy,dz,&x4,&y4))return;
+ gsKit_prim_quad_texture_3d(gs,&materialTex[material],
+  x1,y1,0,0,0, x2,y2,0,32,0, x3,y3,0,32,32, x4,y4,0,0,32,color);
+}
 static u64 trafficColor(int c){
  static const u8 colors[7][3]={{210,210,205},{35,85,160},{175,35,30},{30,30,32},{210,175,35},{115,115,120},{20,125,85}};
  return col(colors[c%7][0],colors[c%7][1],colors[c%7][2]);
@@ -99,9 +136,9 @@ static void drawCar(float x,float z,float len,float width,u64 body,int model,int
       x+half*1.18f,.015f,front+.18f,x-half*1.18f,.015f,front+.18f,col(28,30,31));
  /* Main body: rocker, doors, hood, rear quarter and bumpers. */
  face(x-half,floorY,rear,x+half,floorY,rear,x+half,beltY,rear,x-half,beltY,rear,body);
- face(x-half,floorY,rear,x-half,beltY,rear,x-half,beltY,front,x-half,floorY,front,body);
- face(x+half,floorY,rear,x+half,beltY,rear,x+half,beltY,front,x+half,floorY,front,body);
- face(x-half*.90f,floorY,front+shape->frontNose,x+half*.90f,floorY,front+shape->frontNose,x+half*.82f,hoodY,front-len*.015f,x-half*.82f,hoodY,front-len*.015f,body);
+ materialFace(0,x-half,floorY,rear,x-half,beltY,rear,x-half,beltY,front,x-half,floorY,front,body);
+ materialFace(0,x+half,floorY,rear,x+half,beltY,rear,x+half,beltY,front,x+half,floorY,front,body);
+ materialFace(0,x-half*.90f,floorY,front+shape->frontNose,x+half*.90f,floorY,front+shape->frontNose,x+half*.82f,hoodY,front-len*.015f,x-half*.82f,hoodY,front-len*.015f,body);
  face(x-half,hoodY,front,x+half,hoodY,front,x+half,beltY,front-len*.20f,x-half,beltY,front-len*.20f,body);
  face(x-half*.96f,floorY+.10f,rear+.10f,x+half*.96f,floorY+.10f,rear+.10f,
       x+half*.96f,floorY+.22f,rear+.10f,x-half*.96f,floorY+.22f,rear+.10f,chrome);
@@ -388,7 +425,7 @@ int main(int argc,char *argv[]){
  gs->Mode=GS_MODE_NTSC;gs->Interlace=GS_INTERLACED;gs->Field=GS_FIELD;
  gs->Width=640;gs->Height=448;gs->PSM=GS_PSM_CT16;gs->PSMZ=GS_PSMZ_16;
  gsKit_init_screen(gs);gsKit_mode_switch(gs,GS_PERSISTENT);gsKit_set_test(gs,GS_ZTEST_OFF);
- initPad();
+ initMaterialTextures();\n initPad();
  for(;;){
   controls();
   if(hornWindow>0)hornWindow--;
