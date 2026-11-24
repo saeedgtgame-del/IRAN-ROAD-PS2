@@ -4,6 +4,7 @@
 #include <dmaKit.h>
 #include <libpad.h>
 #include <math.h>
+#include "vehicles.h"
 
 #define MAX_NPC 7
 static GSGLOBAL *gs;
@@ -12,11 +13,12 @@ static padButtonStatus pad;
 static float playerX=0.0f, speedKmh=0.0f, roadScroll=0.0f, throttle=0.0f;
 static int headlights=0, weather=0, nightMode=0;
 static u16 previousButtons=0xFFFF;
+static int currentVehicle=0, engineStage[VEHICLE_COUNT]={0}, paintIndex=0;
 
-typedef struct { float x,z,v; int color,style; } TrafficCar;
+typedef struct { float x,z,v; int color,style,model; } TrafficCar;
 static TrafficCar traffic[MAX_NPC]={
- {-1.25f,18,.48f,0,0},{1.25f,29,.65f,1,1},{0,43,.42f,2,0},
- {-2.5f,57,.72f,3,1},{2.5f,71,.55f,4,0},{-1.25f,88,.82f,5,1},{1.25f,105,.38f,6,0}
+ {-1.25f,18,.48f,0,0,0},{1.25f,29,.65f,1,1,1},{0,43,.42f,2,0,2},
+ {-2.5f,57,.72f,3,1,3},{2.5f,71,.55f,4,0,4},{-1.25f,88,.82f,5,1,5},{1.25f,105,.38f,6,0,6}
 };
 
 static u64 col(u8 r,u8 g,u8 b){ return GS_SETREG_RGBAQ(r,g,b,0x80,0); }
@@ -95,6 +97,9 @@ static void controls(void){
  if(!(pad.btns&PAD_CROSS))throttle+=.006f;else throttle-=.003f;
  if(!(pad.btns&PAD_SQUARE))throttle-=.012f;
  if(throttle<0)throttle=0;if(throttle>1)throttle=1;
+ if(pressed&PAD_SELECT){ currentVehicle=(currentVehicle+1)%VEHICLE_COUNT; speedKmh=0.0f; throttle=0.0f; }
+ if(pressed&PAD_START && engineStage[currentVehicle]<ENGINE_UPGRADE_STAGES)engineStage[currentVehicle]++;
+ if(pressed&PAD_R2)paintIndex=(paintIndex+1)%8;
  if(pressed&PAD_R1)headlights=1;
  if(pressed&PAD_L1)headlights=0;
  if(pressed&PAD_TRIANGLE)nightMode=!nightMode;
@@ -111,7 +116,9 @@ int main(int argc,char *argv[]){
  initPad();
  for(;;){
   controls();
-  speedKmh+=(throttle*2.2f)-.22f;if(speedKmh<0)speedKmh=0;if(speedKmh>350)speedKmh=350;
+  speedKmh+=(throttle*(1.25f+vehicle_acceleration(currentVehicle,engineStage[currentVehicle])))-.22f;
+  if(speedKmh<0)speedKmh=0;
+  if(speedKmh>vehicle_top_speed(currentVehicle,engineStage[currentVehicle]))speedKmh=vehicle_top_speed(currentVehicle,engineStage[currentVehicle]);
   roadScroll+=speedKmh*.0009f;if(roadScroll>7)roadScroll-=7;
   for(int i=0;i<MAX_NPC;i++){
    traffic[i].z-=.025f+speedKmh*.0014f-traffic[i].v*.025f;
@@ -120,8 +127,8 @@ int main(int argc,char *argv[]){
   }
   gsKit_clear(gs,nightMode?col(7,12,22):col(90,145,175));
   drawRoad();
-  for(int i=0;i<MAX_NPC;i++)drawCar(traffic[i].x,traffic[i].z,3.2f,1.45f,trafficColor(traffic[i].color),0,traffic[i].style);
-  drawCar(playerX,5.8f,4.0f,1.85f,col(190,35,30),1,1);
+  for(int i=0;i<MAX_NPC;i++)drawCar(traffic[i].x,traffic[i].z,VEHICLES[traffic[i].model].length*.72f,VEHICLES[traffic[i].model].width*.82f,trafficColor(traffic[i].color),0,traffic[i].style);
+  drawCar(playerX,5.8f,VEHICLES[currentVehicle].length,VEHICLES[currentVehicle].width,col(PAINTS[paintIndex][0],PAINTS[paintIndex][1],PAINTS[paintIndex][2]),1,engineStage[currentVehicle]>0);
   drawHud();
   gsKit_queue_exec(gs);gsKit_sync_flip(gs);gsKit_queue_reset(gs->Per_Queue);
  }
