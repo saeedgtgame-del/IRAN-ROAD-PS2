@@ -17,17 +17,17 @@ Each vehicle has a different base top speed and acceleration. Engine upgrade sta
 
 | PS2 button | Action |
 |---|---|
-| X | Accelerate |
-| Square | Brake |
-| Left / Right | Steer |
+| R2 | Accelerate |
+| L2 | Brake |
+| Left analog stick | Steer smoothly |
 | Select | Select next car |
 | Start | Upgrade selected engine (up to five stages) |
-| R2 | Cycle dry / rain / fog |
+| L1 | Cycle dry / rain / fog |
 | Circle, three quick presses | Send a nearby traffic challenge signal |
-| R1 / L1 | Headlights on / off |
+| R1 | Toggle headlights on / off |
 | Triangle | Toggle day / night |
 
-Paint color cycles in the current prototype. The three-honk feature is only a visual challenge-state prototype; horn audio and full rival race behavior are not implemented yet.
+The upper-right blue/green bar indicates night/day mode; the yellow strip below it indicates headlights. Paint color cycling is not currently mapped to a controller button. The three-honk feature is only a visual challenge-state prototype; horn audio and full rival race behavior are not implemented yet.
 
 ## Build
 Requires PS2SDK, gsKit, dmaKit and pad libraries. Run `make` in a PS2SDK environment. The target is `IRANROAD.ELF`.
