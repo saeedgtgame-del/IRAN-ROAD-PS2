@@ -1,0 +1,11 @@
+project: iran-road-ps2
+
+targets:
+  - name: IRANROAD
+    type: ee
+    sources:
+      - src/main.c
+    libs:
+      - gskit
+      - dmakit
+      - pad
