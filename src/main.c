@@ -49,27 +49,36 @@ static u64 trafficColor(int c){
  return col(colors[c%7][0],colors[c%7][1],colors[c%7][2]);
 }
 static void drawCar(float x,float z,float len,float width,u64 body,int model,int player,int tuned){
- /* Per-model proportions distinguish hatchbacks, sedans and the pickup. */
+ /* Detailed low-poly vehicle assembly. Front points toward +Z. */
  float half=width*.5f, rear=z, front=z+len;
  float floorY=.10f, beltY=.73f, hoodY=.47f;
  float cabRear=z+len*.28f, cabFront=z+len*.69f;
  float roofY=1.28f, wheelR=.25f;
- if(model==1 || model==2){ cabRear=z+len*.22f; cabFront=z+len*.70f; roofY=1.19f; }
- if(model==7){ cabRear=z+len*.29f; cabFront=z+len*.70f; roofY=1.13f; half*=.94f; }
- if(model==9){ cabRear=z+len*.43f; cabFront=z+len*.78f; roofY=1.22f; beltY=.78f; }
- if(model==4 || model==8){ roofY=1.34f; half*=1.02f; }
- u64 tire=col(12,13,15), rim=col(105,110,115), glass=col(35,68,88);
- u64 trim=col(28,30,33), chrome=col(155,160,162);
- u64 red=col(220,35,28), white=col(245,225,170);
-
- /* Main lower body, rear panel and side panels. */
+ int hatch=(model==1||model==2||model==7);
+ int pickup=(model==9);
+ if(hatch){cabRear=z+len*.22f;cabFront=z+len*.70f;roofY=model==7?1.10f:1.19f;}
+ if(model==7){half*=.94f;hoodY=.43f;}
+ if(pickup){cabRear=z+len*.43f;cabFront=z+len*.78f;roofY=1.22f;beltY=.78f;}
+ if(model==4||model==8){roofY=1.34f;half*=1.02f;}
+ u64 tire=col(10,11,13),rubber=col(24,25,27),rim=col(145,150,155);
+ u64 glass=col(31,62,82),glassHi=col(78,112,130);
+ u64 trim=col(25,27,30),chrome=col(170,175,178);
+ u64 red=col(220,30,24),amber=col(245,150,35),white=col(250,235,190);
+ u64 darkBody=col(48,51,55),bodyHi=col(215,215,210);
+ /* Soft ground shadow. */
+ face(x-half*1.18f,.015f,rear-.16f,x+half*1.18f,.015f,rear-.16f,
+      x+half*1.18f,.015f,front+.18f,x-half*1.18f,.015f,front+.18f,col(28,30,31));
+ /* Main body: rocker, doors, hood, rear quarter and bumpers. */
  face(x-half,floorY,rear,x+half,floorY,rear,x+half,beltY,rear,x-half,beltY,rear,body);
  face(x-half,floorY,rear,x-half,beltY,rear,x-half,beltY,front,x-half,floorY,front,body);
  face(x+half,floorY,rear,x+half,beltY,rear,x+half,beltY,front,x+half,floorY,front,body);
  face(x-half,floorY,front,x+half,floorY,front,x+half,hoodY,front,x-half,hoodY,front,body);
  face(x-half,hoodY,front,x+half,hoodY,front,x+half,beltY,front-len*.20f,x-half,beltY,front-len*.20f,body);
-
- /* Rear window, roof, windshield and side glass. */
+ face(x-half*.96f,floorY+.10f,rear+.10f,x+half*.96f,floorY+.10f,rear+.10f,
+      x+half*.96f,floorY+.22f,rear+.10f,x-half*.96f,floorY+.22f,rear+.10f,chrome);
+ face(x-half*.96f,floorY+.10f,front-.06f,x+half*.96f,floorY+.10f,front-.06f,
+      x+half*.96f,floorY+.23f,front-.06f,x-half*.96f,floorY+.23f,front-.06f,trim);
+ /* Roof, windshield, rear glass and side windows. */
  face(x-half*.78f,beltY,cabRear,x+half*.78f,beltY,cabRear,
       x+half*.58f,roofY,cabFront,x-half*.58f,roofY,cabFront,glass);
  face(x-half*.58f,roofY,cabFront,x+half*.58f,roofY,cabFront,
@@ -80,70 +89,103 @@ static void drawCar(float x,float z,float len,float width,u64 body,int model,int
       x-half*.58f,roofY,cabFront,x-half*.80f,beltY,cabFront,glass);
  face(x+half*.80f,beltY,cabRear,x+half*.58f,roofY,cabRear,
       x+half*.58f,roofY,cabFront,x+half*.80f,beltY,cabFront,glass);
-
- /* Front hood differs from the rear deck/hatch profile. */
- face(x-half*.92f,beltY,front-len*.20f,x+half*.92f,beltY,front-len*.20f,
-      x+half*.88f,hoodY,front,x-half*.88f,hoodY,front,body);
- face(x-half*.88f,hoodY,front,x+half*.88f,hoodY,front,
-      x+half*.78f,hoodY+.06f,front-len*.10f,x-half*.78f,hoodY+.06f,front-len*.10f,body);
- if(model==9){
-  /* Nissan Junior: visible open cargo bed and raised side rails. */
-  face(x-half*.96f,beltY*.72f,rear+len*.04f,x-half*.96f,beltY*.72f,cabRear,
-       x-half*.96f,beltY+.20f,cabRear,x-half*.96f,beltY+.20f,rear+len*.04f,body);
-  face(x+half*.96f,beltY*.72f,rear+len*.04f,x+half*.96f,beltY*.72f,cabRear,
-       x+half*.96f,beltY+.20f,cabRear,x+half*.96f,beltY+.20f,rear+len*.04f,body);
-  face(x-half*.96f,beltY+.20f,rear+len*.04f,x+half*.96f,beltY+.20f,rear+len*.04f,
-       x+half*.96f,beltY+.20f,cabRear,x-half*.96f,beltY+.20f,cabRear,trim);
- }else if(model==1 || model==2 || model==7){
-  /* Hatchback rear: shorter tail and sloped rear glass. */
+ /* Window highlights and pillars add depth instead of a single glass slab. */
+ for(int side=-1;side<=1;side+=2){
+  float sx=x+(float)side*half*.80f;
+  face(sx,beltY,cabRear+len*.035f,sx,beltY,cabRear+len*.065f,
+       sx*.0f+x+(float)side*half*.58f,roofY,cabRear+len*.065f,
+       sx*.0f+x+(float)side*half*.58f,roofY,cabRear+len*.035f,trim);
+  face(x+(float)side*half*.80f,beltY,cabFront-len*.06f,
+       x+(float)side*half*.80f,beltY,cabFront-len*.025f,
+       x+(float)side*half*.58f,roofY,cabFront-len*.025f,
+       x+(float)side*half*.58f,roofY,cabFront-len*.06f,trim);
+ }
+ /* Model-specific rear profile and pickup cargo bed. */
+ if(pickup){
+  face(x-half*.96f,beltY*.70f,rear+len*.04f,x-half*.96f,beltY*.70f,cabRear,
+       x-half*.96f,beltY+.22f,cabRear,x-half*.96f,beltY+.22f,rear+len*.04f,body);
+  face(x+half*.96f,beltY*.70f,rear+len*.04f,x+half*.96f,beltY*.70f,cabRear,
+       x+half*.96f,beltY+.22f,cabRear,x+half*.96f,beltY+.22f,rear+len*.04f,body);
+  face(x-half*.96f,beltY+.22f,rear+len*.04f,x+half*.96f,beltY+.22f,rear+len*.04f,
+       x+half*.96f,beltY+.22f,cabRear,x-half*.96f,beltY+.22f,cabRear,trim);
+  face(x-half*.82f,beltY*.72f,rear+len*.10f,x+half*.82f,beltY*.72f,rear+len*.10f,
+       x+half*.82f,beltY*.72f,cabRear-len*.03f,x-half*.82f,beltY*.72f,cabRear-len*.03f,darkBody);
+ }else if(hatch){
   face(x-half*.76f,beltY,cabRear,x+half*.76f,beltY,cabRear,
        x+half*.58f,roofY,cabRear+len*.10f,x-half*.58f,roofY,cabRear+len*.10f,body);
  }else{
-  /* Sedan trunk deck: longer, flatter rear section. */
   face(x-half*.78f,beltY,rear+len*.04f,x+half*.78f,beltY,rear+len*.04f,
        x+half*.72f,beltY+.08f,cabRear,x-half*.72f,beltY+.08f,cabRear,body);
  }
-
- /* Rear bumper, trunk line, license plate, tail lamps and front lamps. */
- face(x-half*.94f,floorY+.08f,rear-.035f,x+half*.94f,floorY+.08f,rear-.035f,
-      x+half*.94f,floorY+.22f,rear-.035f,x-half*.94f,floorY+.22f,rear-.035f,chrome);
- face(x-half*.88f,beltY*.70f,rear-.012f,x+half*.88f,beltY*.70f,rear-.012f,
-      x+half*.88f,beltY*.70f,rear+.025f,x-half*.88f,beltY*.70f,rear+.025f,trim);
- face(x-half*.25f,floorY+.20f,rear-.045f,x+half*.25f,floorY+.20f,rear-.045f,
-      x+half*.25f,floorY+.34f,rear-.045f,x-half*.25f,floorY+.34f,rear-.045f,col(185,190,190));
- face(x-half*.91f,floorY+.30f,rear-.05f,x-half*.52f,floorY+.30f,rear-.05f,
-      x-half*.52f,floorY+.58f,rear-.05f,x-half*.91f,floorY+.58f,rear-.05f,red);
- face(x+half*.52f,floorY+.30f,rear-.05f,x+half*.91f,floorY+.30f,rear-.05f,
-      x+half*.91f,floorY+.58f,rear-.05f,x+half*.52f,floorY+.58f,rear-.05f,red);
- face(x-half*.30f,floorY+.04f,front+.025f,x+half*.30f,floorY+.04f,front+.025f,
-      x+half*.30f,floorY+.15f,front+.025f,x-half*.30f,floorY+.15f,front+.025f,trim);
- face(x-half*.88f,floorY+.24f,front+.035f,x-half*.42f,floorY+.24f,front+.035f,
-      x-half*.42f,floorY+.43f,front+.035f,x-half*.88f,floorY+.43f,front+.035f,white);
- face(x+half*.42f,floorY+.24f,front+.035f,x+half*.88f,floorY+.24f,front+.035f,
-      x+half*.88f,floorY+.43f,front+.035f,x+half*.42f,floorY+.43f,front+.035f,white);
-
- /* Four chunky tires and metallic hubs, visibly outside the body. */
+ /* Hood creases, front grille and lower air intake. */
+ face(x-half*.63f,hoodY+.015f,front-.015f,x-half*.56f,hoodY+.015f,front-.015f,
+      x-half*.48f,hoodY+.035f,front-len*.13f,x-half*.55f,hoodY+.035f,front-len*.13f,bodyHi);
+ face(x+half*.56f,hoodY+.015f,front-.015f,x+half*.63f,hoodY+.015f,front-.015f,
+      x+half*.55f,hoodY+.035f,front-len*.13f,x+half*.48f,hoodY+.035f,front-len*.13f,bodyHi);
+ face(x-half*.43f,floorY+.30f,front+.045f,x+half*.43f,floorY+.30f,front+.045f,
+      x+half*.43f,floorY+.49f,front+.045f,x-half*.43f,floorY+.49f,front+.045f,trim);
+ for(int k=0;k<5;k++){
+  float gy=floorY+.325f+(float)k*.032f;
+  face(x-half*.37f,gy,front+.052f,x+half*.37f,gy,front+.052f,
+       x+half*.37f,gy+.012f,front+.052f,x-half*.37f,gy+.012f,front+.052f,chrome);
+ }
+ face(x-half*.24f,floorY+.16f,front+.05f,x+half*.24f,floorY+.16f,front+.05f,
+      x+half*.24f,floorY+.22f,front+.05f,x-half*.24f,floorY+.22f,front+.05f,darkBody);
+ /* Headlights, indicators, fog lamps and rear light clusters. */
  for(int side=-1;side<=1;side+=2){
-  float wx=x+(float)side*(half+.035f);
+  float sx=x+(float)side;
+  face(sx-half*.88f,floorY+.28f,front+.055f,sx-half*.48f,floorY+.28f,front+.055f,
+       sx-half*.48f,floorY+.43f,front+.055f,sx-half*.88f,floorY+.43f,front+.055f,white);
+  face(sx-half*.88f,floorY+.25f,front+.058f,sx-half*.79f,floorY+.25f,front+.058f,
+       sx-half*.79f,floorY+.31f,front+.058f,sx-half*.88f,floorY+.31f,front+.058f,amber);
+  face(sx-half*.91f,floorY+.30f,rear-.055f,sx-half*.53f,floorY+.30f,rear-.055f,
+       sx-half*.53f,floorY+.57f,rear-.055f,sx-half*.91f,floorY+.57f,rear-.055f,red);
+  face(sx-half*.89f,floorY+.12f,rear-.058f,sx-half*.76f,floorY+.12f,rear-.058f,
+       sx-half*.76f,floorY+.24f,rear-.058f,sx-half*.89f,floorY+.24f,rear-.058f,amber);
+  face(sx-half*.30f,floorY+.13f,front+.06f,sx-half*.18f,floorY+.13f,front+.06f,
+       sx-half*.18f,floorY+.22f,front+.06f,sx-half*.30f,floorY+.22f,front+.06f,white);
+ }
+ /* Four tires with sidewalls, hub rings and center caps. */
+ for(int side=-1;side<=1;side+=2){
+  float wx=x+(float)side*(half+.045f);
   for(int axle=0;axle<2;axle++){
    float wz=axle?front-len*.22f:rear+len*.23f;
-   face(wx-.12f,floorY-.01f,wz-wheelR,wx+.12f,floorY-.01f,wz-wheelR,
-        wx+.12f,floorY+wheelR,wz-wheelR,wx-.12f,floorY+wheelR,wz-wheelR,tire);
-   face(wx-.075f,floorY+.055f,wz-wheelR-.012f,wx+.075f,floorY+.055f,wz-wheelR-.012f,
-        wx+.075f,floorY+.19f,wz-wheelR-.012f,wx-.075f,floorY+.19f,wz-wheelR-.012f,rim);
+   face(wx-.14f,floorY-.015f,wz-wheelR,wx+.14f,floorY-.015f,wz-wheelR,
+        wx+.14f,floorY+wheelR,wz-wheelR,wx-.14f,floorY+wheelR,wz-wheelR,tire);
+   face(wx-.105f,floorY+.035f,wz-wheelR-.018f,wx+.105f,floorY+.035f,wz-wheelR-.018f,
+        wx+.105f,floorY+.22f,wz-wheelR-.018f,wx-.105f,floorY+.22f,wz-wheelR-.018f,rubber);
+   face(wx-.075f,floorY+.07f,wz-wheelR-.03f,wx+.075f,floorY+.07f,wz-wheelR-.03f,
+        wx+.075f,floorY+.19f,wz-wheelR-.03f,wx-.075f,floorY+.19f,wz-wheelR-.03f,rim);
+   face(wx-.025f,floorY+.105f,wz-wheelR-.04f,wx+.025f,floorY+.105f,wz-wheelR-.04f,
+        wx+.025f,floorY+.155f,wz-wheelR-.04f,wx-.025f,floorY+.155f,wz-wheelR-.04f,chrome);
   }
+  /* Side skirt, door shut lines, handles, mirror and mud flap. */
+  float sx=x+(float)side*half;
+  face(sx,floorY+.12f,rear+len*.28f,sx,floorY+.12f,front-len*.18f,
+       sx,floorY+.20f,front-len*.18f,sx,floorY+.20f,rear+len*.28f,trim);
+  face(sx,beltY*.40f,rear+len*.43f,sx,beltY*.40f,rear+len*.46f,
+       sx,beltY*.88f,rear+len*.46f,sx,beltY*.88f,rear+len*.43f,trim);
+  face(sx,beltY*.77f,rear+len*.50f,sx,beltY*.77f,rear+len*.57f,
+       sx,beltY*.82f,rear+len*.57f,sx,beltY*.82f,rear+len*.50f,chrome);
+  face(sx,beltY-.03f,cabFront-.08f,sx+(float)side*.11f,beltY-.03f,cabFront-.08f,
+       sx+(float)side*.11f,beltY+.07f,cabFront-.08f,sx,beltY+.07f,cabFront-.08f,trim);
+  face(sx,floorY+.03f,rear+len*.16f,sx,floorY+.03f,rear+len*.24f,
+       sx,floorY+.15f,rear+len*.24f,sx,floorY+.15f,rear+len*.16f,darkBody);
  }
- /* Side mirrors and door seams. */
- for(int side=-1;side<=1;side+=2){
-  float sx=x+(float)side*half*1.04f;
-  face(sx-.055f,beltY-.03f,cabFront-.08f,sx+.055f,beltY-.03f,cabFront-.08f,
-       sx+.055f,beltY+.07f,cabFront-.08f,sx-.055f,beltY+.07f,cabFront-.08f,trim);
-  face(sx,beltY-.02f,cabRear+.03f,sx,beltY-.02f,cabFront-.04f,
-       sx,beltY+.01f,cabFront-.04f,sx,beltY+.01f,cabRear+.03f,trim);
+ /* Front and rear registration plates, exhaust, spoiler/roof antenna. */
+ face(x-half*.22f,floorY+.25f,front+.065f,x+half*.22f,floorY+.25f,front+.065f,
+      x+half*.22f,floorY+.31f,front+.065f,x-half*.22f,floorY+.31f,front+.065f,col(225,225,215));
+ face(x-half*.22f,floorY+.24f,rear-.065f,x+half*.22f,floorY+.24f,rear-.065f,
+      x+half*.22f,floorY+.30f,rear-.065f,x-half*.22f,floorY+.30f,rear-.065f,col(225,225,215));
+ if(hatch||tuned){
+  face(x-half*.70f,roofY+.015f,cabRear+len*.06f,x+half*.70f,roofY+.015f,cabRear+len*.06f,
+       x+half*.70f,roofY+.09f,cabRear+len*.06f,x-half*.70f,roofY+.09f,cabRear+len*.06f,trim);
  }
  if(tuned){
   face(x-half*.92f,beltY+.04f,rear+.08f,x+half*.92f,beltY+.04f,rear+.08f,
-       x+half*.92f,beltY+.12f,rear+.08f,x-half*.92f,beltY+.12f,rear+.08f,trim);
+       x+half*.92f,beltY+.12f,rear+.08f,x-half*.92f,beltY+.12f,rear+.08f,chrome);
+  face(x-half*.10f,floorY+.12f,rear-.09f,x+half*.10f,floorY+.12f,rear-.09f,
+       x+half*.10f,floorY+.17f,rear-.09f,x-half*.10f,floorY+.17f,rear-.09f,trim);
  }
  (void)player;
 }
