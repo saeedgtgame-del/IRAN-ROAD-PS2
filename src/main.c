@@ -14,6 +14,7 @@ static float playerX=0.0f, speedKmh=0.0f, roadScroll=0.0f, throttle=0.0f;
 static int headlights=0, weather=0, nightMode=0;
 static u16 previousButtons=0xFFFF;
 static int currentVehicle=0, engineStage[VEHICLE_COUNT]={0}, paintIndex=0;
+static int hornCount=0, hornWindow=0, raceChallenge=0, raceTarget=-1;
 
 typedef struct { float x,z,v; int color,style,model; } TrafficCar;
 static TrafficCar traffic[MAX_NPC]={
@@ -62,7 +63,8 @@ static void drawCar(float x,float z,float len,float width,u64 body,int player,in
 }
 static void drawRoad(void){
  float horizon=(float)gs->Height*.39f;
- gsKit_prim_sprite(gs,0,0,(float)gs->Width,horizon,1,nightMode?col(8,15,30):col(105,170,205));
+ u64 sky=nightMode?col(8,15,30):(weather==2?col(145,155,160):(weather==1?col(80,105,125):col(105,170,205)));
+ gsKit_prim_sprite(gs,0,0,(float)gs->Width,horizon,1,sky);
  gsKit_prim_sprite(gs,0,horizon,(float)gs->Width,(float)gs->Height,1,nightMode?col(18,28,20):col(55,112,55));
  face(-8,0,3,8,0,3,8,0,150,-8,0,150,col(75,77,80));
  face(-8.35f,0,3,-8,0,3,-8,0,150,-8.35f,0,150,col(220,210,180));
@@ -75,6 +77,14 @@ static void drawRoad(void){
    face(lx-.035f,.015f,z,lx+.035f,.015f,z,lx+.035f,.015f,z+2.5f,lx-.035f,.015f,z+2.5f,col(225,225,205));
   }
  }
+ if(weather==1){
+  for(int r=0;r<24;r++){
+   float rx=(float)((r*37+(int)(roadScroll*90))%620);
+   float ry=(float)((r*53+(int)(roadScroll*170))%430);
+   gsKit_prim_sprite(gs,rx,ry,rx+1.0f,ry+9.0f,1,col(170,195,215));
+  }
+ }
+ if(weather==2)gsKit_prim_sprite(gs,0,horizon+55,(float)gs->Width,horizon+125,1,col(190,195,195));
 }
 static void drawHud(void){
  float w=(float)gs->Width,h=(float)gs->Height;
@@ -84,6 +94,7 @@ static void drawHud(void){
  gsKit_prim_sprite(gs,w-99,18,w-20,29,1,nightMode?col(55,105,180):col(60,155,90));
  if(headlights)gsKit_prim_sprite(gs,w-125,42,w-14,49,1,col(245,225,130));
  if(weather)gsKit_prim_sprite(gs,14,14,60,21,1,col(95,145,205));
+ if(raceChallenge)gsKit_prim_sprite(gs,w-125,55,w-14,64,1,raceChallenge==1?col(45,190,90):col(190,65,45));
 }
 static void initPad(void){ padInit(0); padPortOpen(0,0,padBuf); }
 static void controls(void){
@@ -99,11 +110,23 @@ static void controls(void){
  if(throttle<0)throttle=0;if(throttle>1)throttle=1;
  if(pressed&PAD_SELECT){ currentVehicle=(currentVehicle+1)%VEHICLE_COUNT; speedKmh=0.0f; throttle=0.0f; }
  if(pressed&PAD_START && engineStage[currentVehicle]<ENGINE_UPGRADE_STAGES)engineStage[currentVehicle]++;
- if(pressed&PAD_R2)paintIndex=(paintIndex+1)%8;
+ if(pressed&PAD_R2)weather=(weather+1)%3;
+ if(pressed&PAD_CIRCLE){
+  if(hornWindow<=0)hornCount=0;
+  hornCount++; hornWindow=55;
+  if(hornCount>=3){
+   float nearest=10000.0f; raceTarget=-1;
+   for(int n=0;n<MAX_NPC;n++){
+    if(traffic[n].z>6.0f && traffic[n].z<nearest){nearest=traffic[n].z;raceTarget=n;}
+   }
+   raceChallenge=(raceTarget>=0 && (traffic[raceTarget].style || (raceTarget%3==0)))?1:2;
+   hornCount=0; hornWindow=0;
+  }
+ }
  if(pressed&PAD_R1)headlights=1;
  if(pressed&PAD_L1)headlights=0;
  if(pressed&PAD_TRIANGLE)nightMode=!nightMode;
- if(pressed&PAD_CIRCLE)weather=(weather+1)%3;
+
 }
 int main(int argc,char *argv[]){
  (void)argc;(void)argv;
@@ -116,6 +139,7 @@ int main(int argc,char *argv[]){
  initPad();
  for(;;){
   controls();
+  if(hornWindow>0)hornWindow--;
   speedKmh+=(throttle*(1.25f+vehicle_acceleration(currentVehicle,engineStage[currentVehicle])))-.22f;
   if(speedKmh<0)speedKmh=0;
   if(speedKmh>vehicle_top_speed(currentVehicle,engineStage[currentVehicle]))speedKmh=vehicle_top_speed(currentVehicle,engineStage[currentVehicle]);
