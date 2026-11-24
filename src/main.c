@@ -91,7 +91,9 @@ static void drawCar(float x,float z,float len,float width,u64 body,int model,int
  u64 glass=col(18+(shape->glassTint/4),35+(shape->glassTint/3),48+(shape->glassTint/2)),glassHi=col(78,112,130);
  u64 trim=col(shape->trimTone,shape->trimTone+2,shape->trimTone+5),chrome=col(170,175,178);
  u64 red=col(220,30,24),amber=col(245,150,35),white=col(250,235,190);
- unsigned int br=(unsigned int)(body&255u), bg=(unsigned int)((body>>8)&255u), bb=(unsigned int)((body>>16)&255u);\n u64 darkBody=col((u8)(br*.42f),(u8)(bg*.42f),(u8)(bb*.42f));\n u64 bodyHi=col((u8)(br>225?255:br+30),(u8)(bg>225?255:bg+30),(u8)(bb>225?255:bb+30));
+ unsigned int br=(unsigned int)(body&255u), bg=(unsigned int)((body>>8)&255u), bb=(unsigned int)((body>>16)&255u);
+ u64 darkBody=col((u8)(br*.42f),(u8)(bg*.42f),(u8)(bb*.42f));
+ u64 bodyHi=col((u8)(br>225?255:br+30),(u8)(bg>225?255:bg+30),(u8)(bb>225?255:bb+30));
  /* Soft ground shadow. */
  face(x-half*1.18f,.015f,rear-.16f,x+half*1.18f,.015f,rear-.16f,
       x+half*1.18f,.015f,front+.18f,x-half*1.18f,.015f,front+.18f,col(28,30,31));
@@ -176,15 +178,16 @@ static void drawCar(float x,float z,float len,float width,u64 body,int model,int
  for(int side=-1;side<=1;side+=2){
   float wx=x+(float)side*(half+.045f);
   for(int axle=0;axle<2;axle++){
-   float wz=axle?front-len*.22f:rear+len*.23f;\n   float wr=wheelR*shape->wheelScale;
-   face(wx-.14f,floorY-.015f,wz-wr,wx+.14f,floorY-.015f,wz-wheelR,
-        wx+.14f,floorY+wr,wz-wheelR,wx-.14f,floorY+wheelR,wz-wheelR,tire);
-   face(wx-.105f,floorY+.035f,wz-wheelR-.018f,wx+.105f,floorY+.035f,wz-wheelR-.018f,
-        wx+.105f,floorY+.22f,wz-wheelR-.018f,wx-.105f,floorY+.22f,wz-wheelR-.018f,rubber);
-   face(wx-.075f,floorY+.07f,wz-wheelR-.03f,wx+.075f,floorY+.07f,wz-wheelR-.03f,
-        wx+.075f,floorY+.19f,wz-wheelR-.03f,wx-.075f,floorY+.19f,wz-wheelR-.03f,rim);
-   face(wx-.025f,floorY+.105f,wz-wheelR-.04f,wx+.025f,floorY+.105f,wz-wheelR-.04f,
-        wx+.025f,floorY+.155f,wz-wheelR-.04f,wx-.025f,floorY+.155f,wz-wheelR-.04f,chrome);
+   float wz=axle?front-len*.22f:rear+len*.23f;
+   float wr=wheelR*shape->wheelScale;
+   face(wx-.14f,floorY-.015f,wz-wr,wx+.14f,floorY-.015f,wz-wr,
+        wx+.14f,floorY+wr,wz-wr,wx-.14f,floorY+wr,wz-wr,tire);
+   face(wx-.105f,floorY+.035f,wz-wr-.018f,wx+.105f,floorY+.035f,wz-wr-.018f,
+        wx+.105f,floorY+.22f*shape->wheelScale,wz-wr-.018f,wx-.105f,floorY+.22f*shape->wheelScale,wz-wr-.018f,rubber);
+   face(wx-.075f,floorY+.07f,wz-wr-.03f,wx+.075f,floorY+.07f,wz-wr-.03f,
+        wx+.075f,floorY+.19f*shape->wheelScale,wz-wr-.03f,wx-.075f,floorY+.19f*shape->wheelScale,wz-wr-.03f,rim);
+   face(wx-.025f,floorY+.105f,wz-wr-.04f,wx+.025f,floorY+.105f,wz-wr-.04f,
+        wx+.025f,floorY+.155f*shape->wheelScale,wz-wr-.04f,wx-.025f,floorY+.155f*shape->wheelScale,wz-wr-.04f,chrome);
   }
   /* Side skirt, door shut lines, handles, mirror and mud flap. */
   float sx=x+(float)side*half;
