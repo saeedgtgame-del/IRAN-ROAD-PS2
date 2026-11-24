@@ -21,7 +21,9 @@ Each vehicle has a different base top speed and acceleration. Engine upgrade sta
 | L2 | Brake |
 | Left analog stick | Steer smoothly |
 | Select | Select next car |
-| Start | Upgrade selected engine (up to five stages) |
+| Start | Open / close engine upgrade garage |
+| X (inside garage) | Buy next engine upgrade |
+| Circle (inside garage) | Close upgrade garage |
 | L1 | Cycle dry / rain / fog |
 | Circle, three quick presses | Send a nearby traffic challenge signal |
 | R1 | Toggle headlights on / off |
