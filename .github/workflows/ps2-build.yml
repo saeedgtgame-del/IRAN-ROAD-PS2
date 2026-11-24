@@ -18,4 +18,4 @@ jobs:
             -v "$PWD:/src" \
             -w /src \
             ps2dev/ps2dev:latest \
-            bash -lc "make clean && make"
+            sh -lc "make clean && make"
