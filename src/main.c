@@ -236,14 +236,25 @@ static void drawCar(float x,float z,float len,float width,u64 body,int model,int
   for(int axle=0;axle<2;axle++){
    float wz=axle?front-len*.22f:rear+len*.23f;
    float wr=wheelR*shape->wheelScale;
-   face(wx-.14f,floorY-.015f,wz-wr,wx+.14f,floorY-.015f,wz-wr,
-        wx+.14f,floorY+wr,wz-wr,wx-.14f,floorY+wr,wz-wr,tire);
-   face(wx-.105f,floorY+.035f,wz-wr-.018f,wx+.105f,floorY+.035f,wz-wr-.018f,
-        wx+.105f,floorY+.22f*shape->wheelScale,wz-wr-.018f,wx-.105f,floorY+.22f*shape->wheelScale,wz-wr-.018f,rubber);
-   face(wx-.075f,floorY+.07f,wz-wr-.03f,wx+.075f,floorY+.07f,wz-wr-.03f,
-        wx+.075f,floorY+.19f*shape->wheelScale,wz-wr-.03f,wx-.075f,floorY+.19f*shape->wheelScale,wz-wr-.03f,rim);
-   face(wx-.025f,floorY+.105f,wz-wr-.04f,wx+.025f,floorY+.105f,wz-wr-.04f,
-        wx+.025f,floorY+.155f*shape->wheelScale,wz-wr-.04f,wx-.025f,floorY+.155f*shape->wheelScale,wz-wr-.04f,chrome);
+   /* Faceted circular tyre and alloy rim instead of rectangular wheels. */
+   {
+    float cy=floorY+.20f*shape->wheelScale;
+    float outer=.235f*shape->wheelScale, inner=.135f*shape->wheelScale;
+    for(int seg=0;seg<8;seg++){
+     float a0=(float)seg*.785398163f, a1=(float)(seg+1)*.785398163f;
+     float ox0=wx+cosf(a0)*outer, oy0=cy+sinf(a0)*outer;
+     float ox1=wx+cosf(a1)*outer, oy1=cy+sinf(a1)*outer;
+     float ix0=wx+cosf(a0)*inner, iy0=cy+sinf(a0)*inner;
+     float ix1=wx+cosf(a1)*inner, iy1=cy+sinf(a1)*inner;
+     face(ox0,oy0,wz-wr-.025f,ox1,oy1,wz-wr-.025f,
+          ix1,iy1,wz-wr-.025f,ix0,iy0,wz-wr-.025f,seg%2?rubber:tire);
+     face(ix0,iy0,wz-wr-.045f,ix1,iy1,wz-wr-.045f,
+          wx+cosf(a1)*inner*.48f,cy+sinf(a1)*inner*.48f,wz-wr-.045f,
+          wx+cosf(a0)*inner*.48f,cy+sinf(a0)*inner*.48f,wz-wr-.045f,rim);
+    }
+    face(wx-.035f,cy-.035f,wz-wr-.055f,wx+.035f,cy-.035f,wz-wr-.055f,
+         wx+.035f,cy+.035f,wz-wr-.055f,wx-.035f,cy+.035f,wz-wr-.055f,chrome);
+   }
   }
   /* Side skirt, door shut lines, handles, mirror and mud flap. */
   float sx=x+(float)side*half;
@@ -448,6 +459,12 @@ int main(int argc,char *argv[]){
  initPad();
  for(;;){
   controls();
+  /* Camera stays behind the player and eases toward every lane change. */
+  cameraX+=(playerX-cameraX)*.22f;
+  {
+   float targetYaw=steeringInput*.12f;
+   cameraYaw+=(targetYaw-cameraYaw)*.14f;
+  }
   if(hornWindow>0)hornWindow--;
   if(brakeActive){
    /* Progressive road-car braking: decelerates firmly without snapping to zero. */
@@ -466,11 +483,13 @@ int main(int argc,char *argv[]){
       Oncoming cars approach faster; NPCs are never frozen with player braking. */
    float npcSignedSpeed=(float)traffic[i].direction*traffic[i].v;
    traffic[i].z+=(npcSignedSpeed-speedKmh)*.00145f;
-   if(traffic[i].z<7.0f){
-    traffic[i].z=112.0f+(float)(i*4);
+   /* Keep traffic in a much longer visible loop. Cars are recycled
+      farther away, not immediately after passing the player. */
+   if(traffic[i].z<5.5f){
+    traffic[i].z=178.0f+(float)(i*5);
     traffic[i].x=(float)((i%5)-2)*1.25f;
-   }else if(traffic[i].z>132.0f){
-    traffic[i].z=12.0f+(float)(i*3);
+   }else if(traffic[i].z>215.0f){
+    traffic[i].z=18.0f+(float)(i*4);
     traffic[i].x=(float)((i%5)-2)*1.25f;
    }
    if(traffic[i].style&&(i%2)==0)
