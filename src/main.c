@@ -89,7 +89,7 @@ static void initMaterialTextures(void){
   }
   materialTex[m].Width=32; materialTex[m].Height=32;
   materialTex[m].PSM=GS_PSM_CT16;
-  materialTex[m].Mem=materialPixels[m];
+  materialTex[m].Mem=(u32 *)materialPixels[m];
   materialTex[m].Vram=gsKit_vram_alloc(gs,gsKit_texture_size(32,32,GS_PSM_CT16),GSKIT_ALLOC_USERBUFFER);
   materialTex[m].Filter=GS_FILTER_NEAREST;
   gsKit_texture_upload(gs,&materialTex[m]);
@@ -125,7 +125,7 @@ static void drawCar(float x,float z,float len,float width,u64 body,int model,int
  beltY=shape->beltHeight;
  float roofHalf=half*shape->cabinWidth;
  u64 tire=col(10,11,13),rubber=col(24,25,27),rim=col(145,150,155);
- u64 glass=col(18+(shape->glassTint/4),35+(shape->glassTint/3),48+(shape->glassTint/2)),glassHi=col(78,112,130);
+ u64 glass=col(18+(shape->glassTint/4),35+(shape->glassTint/3),48+(shape->glassTint/2));
  u64 trim=col(shape->trimTone,shape->trimTone+2,shape->trimTone+5),chrome=col(170,175,178);
  u64 red=col(220,30,24),amber=col(245,150,35),white=col(250,235,190);
  unsigned int br=(unsigned int)(body&255u), bg=(unsigned int)((body>>8)&255u), bb=(unsigned int)((body>>16)&255u);
