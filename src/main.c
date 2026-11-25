@@ -141,8 +141,22 @@ static void drawCar(float x,float z,float len,float width,u64 body,int model,int
       x+half*1.18f,.015f,front+.18f,x-half*1.18f,.015f,front+.18f,col(28,30,31));
  /* Main body: rocker, doors, hood, rear quarter and bumpers. */
  face(x-half,floorY,rear,x+half,floorY,rear,x+half,beltY,rear,x-half,beltY,rear,body);
- materialFace(0,x-half,floorY,rear,x-half,beltY,rear,x-half,beltY,front,x-half,floorY,front,body);
- materialFace(0,x+half,floorY,rear,x+half,beltY,rear,x+half,beltY,front,x+half,floorY,front,body);
+ /* Segmented low-poly body shell: eight longitudinal stations create
+    a tapered hood, shoulder line, door volume and rear quarter instead of
+    one flat rectangular side panel. The profile is shared but scaled by
+    each vehicle's dimensions and cabin blueprint. */
+ {
+  static const float station[8]={0.00f,.12f,.28f,.45f,.62f,.78f,.90f,1.00f};
+  static const float sideWidth[8]={.82f,.94f,1.00f,.99f,.97f,.94f,.86f,.72f};
+  static const float sideTop[8]={.62f,.72f,.74f,.73f,.72f,.68f,.54f,.43f};
+  for(int q=0;q<7;q++){
+   float za=rear+len*station[q], zb=rear+len*station[q+1];
+   float wa=half*sideWidth[q], wb=half*sideWidth[q+1];
+   float ya=floorY+sideTop[q], yb=floorY+sideTop[q+1];
+   materialFace(0,x-wa,floorY,za,x-wa,ya,za,x-wb,yb,zb,x-wb,floorY,zb,body);
+   materialFace(0,x+wa,floorY,za,x+wa,ya,za,x+wb,yb,zb,x+wb,floorY,zb,body);
+  }
+ }
  materialFace(0,x-half*.90f,floorY,front+shape->frontNose,x+half*.90f,floorY,front+shape->frontNose,x+half*.82f,hoodY,front-len*.015f,x-half*.82f,hoodY,front-len*.015f,body);
  face(x-half,hoodY,front,x+half,hoodY,front,x+half,beltY,front-len*.20f,x-half,beltY,front-len*.20f,body);
  face(x-half*.96f,floorY+.10f,rear+.10f,x+half*.96f,floorY+.10f,rear+.10f,
