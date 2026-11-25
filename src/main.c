@@ -13,7 +13,8 @@ static GSTEXTURE materialTex[4];
 static u16 materialPixels[4][32*32] __attribute__((aligned(128)));
 static char padBuf[256] __attribute__((aligned(64)));
 static struct padButtonStatus pad;
-static float playerX=0.0f, speedKmh=0.0f, roadScroll=0.0f, throttle=0.0f;
+static float playerX=0.0f, cameraX=0.0f, cameraYaw=0.0f, steeringInput=0.0f;
+static float speedKmh=0.0f, roadScroll=0.0f, throttle=0.0f;
 static int headlights=0, weather=0, nightMode=0, brakeActive=0;
 static u16 previousButtons=0xFFFF;
 static int currentVehicle=0, engineStage[VEHICLE_COUNT]={0}, paintIndex=0;
@@ -33,11 +34,15 @@ static void quad(float a,float b,float c,float d,float e,float f,float g,float h
  gsKit_prim_quad(gs,a,b,c,d,e,f,g,h,2,color);
 }
 static int project(float x,float y,float z,float *sx,float *sy){
- /* Chase camera: elevated, slightly downward-looking, centered behind the car. */
- float focal=285.0f, horizon=(float)gs->Height*.315f;
- if(z<1.0f)return 0;
- *sx=(float)gs->Width*.5f+(x-playerX*.10f)*focal/z;
- *sy=horizon+(1.62f-y)*focal/z;
+ /* Smooth close chase camera. cameraX follows lane changes; cameraYaw adds
+    a small steering look-ahead so the road turns under the player naturally. */
+ float focal=345.0f, horizon=(float)gs->Height*.300f;
+ float dx=x-cameraX, cy=cosf(cameraYaw), syaw=sinf(cameraYaw);
+ float viewX=dx*cy-z*syaw;
+ float viewZ=dx*syaw+z*cy;
+ if(viewZ<0.85f)return 0;
+ *sx=(float)gs->Width*.5f+viewX*focal/viewZ;
+ *sy=horizon+(2.02f-y)*focal/viewZ;
  return 1;
 }
 static u64 litColor(u64 color,float ax,float ay,float az,
@@ -377,7 +382,7 @@ static void drawHud(void){
 }
 static void initPad(void){ padInit(0); padPortOpen(0,0,padBuf); }
 static void controls(void){
- if(!padRead(0,0,&pad)){ brakeActive=0; throttle=0.0f; return; }
+ if(!padRead(0,0,&pad)){ brakeActive=0; throttle=0.0f; steeringInput=0.0f; return; }
  /* R2 accelerates, L2 brakes; left analog stick steers. */
  brakeActive=(!(pad.btns&PAD_L2));
  u16 pressed=(u16)((~pad.btns)&previousButtons);
@@ -460,7 +465,7 @@ int main(int argc,char *argv[]){
   gsKit_clear(gs,nightMode?col(7,12,22):col(90,145,175));
   drawRoad();
   for(int i=0;i<MAX_NPC;i++)drawCar(traffic[i].x,traffic[i].z,VEHICLES[traffic[i].model].length*.72f,VEHICLES[traffic[i].model].width*.82f,trafficColor(traffic[i].color),traffic[i].model,0,traffic[i].style);
-  drawCar(playerX,5.6f,VEHICLES[currentVehicle].length,VEHICLES[currentVehicle].width,col(PAINTS[paintIndex][0],PAINTS[paintIndex][1],PAINTS[paintIndex][2]),currentVehicle,1,engineStage[currentVehicle]>0);
+  drawCar(playerX,4.25f,VEHICLES[currentVehicle].length,VEHICLES[currentVehicle].width,col(PAINTS[paintIndex][0],PAINTS[paintIndex][1],PAINTS[paintIndex][2]),currentVehicle,1,engineStage[currentVehicle]>0);
   drawHud();
   gsKit_queue_exec(gs);gsKit_sync_flip(gs);gsKit_queue_reset(gs->Per_Queue);
  }
