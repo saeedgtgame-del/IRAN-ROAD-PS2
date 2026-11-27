@@ -146,10 +146,10 @@ static void drawCar(float x,float z,float len,float width,u64 body,int model,int
     one flat rectangular side panel. The profile is shared but scaled by
     each vehicle's dimensions and cabin blueprint. */
  {
-  static const float station[8]={0.00f,.12f,.28f,.45f,.62f,.78f,.90f,1.00f};
-  static const float sideWidth[8]={.82f,.94f,1.00f,.99f,.97f,.94f,.86f,.72f};
-  static const float sideTop[8]={.62f,.72f,.74f,.73f,.72f,.68f,.54f,.43f};
-  for(int q=0;q<7;q++){
+  static const float station[10]={0.00f,.08f,.18f,.30f,.42f,.55f,.68f,.80f,.91f,1.00f};
+  static const float sideWidth[10]={.76f,.88f,.96f,1.00f,.99f,.98f,.96f,.91f,.82f,.70f};
+  static const float sideTop[10]={.56f,.67f,.73f,.75f,.74f,.73f,.72f,.68f,.55f,.42f};
+  for(int q=0;q<9;q++){
    float za=rear+len*station[q], zb=rear+len*station[q+1];
    float wa=half*sideWidth[q], wb=half*sideWidth[q+1];
    float ya=floorY+sideTop[q], yb=floorY+sideTop[q+1];
@@ -414,7 +414,10 @@ static void controls(void){
  previousButtons=pad.btns;
  int stick=(int)pad.ljoy_h-128;
  if(stick>-12 && stick<12)stick=0;
- playerX+=((float)stick/127.0f)*.075f;
+ /* Feed actual steering into the chase camera; previously this value stayed
+    at zero while the player car moved, so the camera never looked into turns. */
+ steeringInput=(float)stick/127.0f;
+ playerX+=steeringInput*.075f;
  if(playerX< -6.0f)playerX=-6.0f;
  if(playerX>6.0f)playerX=6.0f;
  if(!(pad.btns&PAD_R2))throttle+=.018f;else throttle-=.004f;
@@ -486,10 +489,10 @@ int main(int argc,char *argv[]){
    /* Keep traffic in a much longer visible loop. Cars are recycled
       farther away, not immediately after passing the player. */
    if(traffic[i].z<5.5f){
-    traffic[i].z=178.0f+(float)(i*5);
+    traffic[i].z=238.0f+(float)(i*6);
     traffic[i].x=(float)((i%5)-2)*1.25f;
-   }else if(traffic[i].z>215.0f){
-    traffic[i].z=18.0f+(float)(i*4);
+   }else if(traffic[i].z>280.0f){
+    traffic[i].z=20.0f+(float)(i*4);
     traffic[i].x=(float)((i%5)-2)*1.25f;
    }
    if(traffic[i].style&&(i%2)==0)
@@ -497,7 +500,22 @@ int main(int argc,char *argv[]){
   }
   gsKit_clear(gs,nightMode?col(7,12,22):col(90,145,175));
   drawRoad();
-  for(int i=0;i<MAX_NPC;i++)drawCar(traffic[i].x,traffic[i].z,VEHICLES[traffic[i].model].length*.72f,VEHICLES[traffic[i].model].width*.82f,trafficColor(traffic[i].color),traffic[i].model,0,traffic[i].style);
+  /* This renderer has no depth buffer. Draw distant traffic first so nearer
+     vehicles are not accidentally painted over by cars farther down-road. */
+  {
+   int order[MAX_NPC];
+   for(int i=0;i<MAX_NPC;i++)order[i]=i;
+   for(int i=0;i<MAX_NPC-1;i++)for(int j=i+1;j<MAX_NPC;j++)
+    if(traffic[order[i]].z<traffic[order[j]].z){
+     int tmp=order[i];order[i]=order[j];order[j]=tmp;
+    }
+   for(int k=0;k<MAX_NPC;k++){
+    int i=order[k];
+    drawCar(traffic[i].x,traffic[i].z,VEHICLES[traffic[i].model].length*.72f,
+      VEHICLES[traffic[i].model].width*.82f,trafficColor(traffic[i].color),
+      traffic[i].model,0,traffic[i].style);
+   }
+  }
   drawCar(playerX,4.25f,VEHICLES[currentVehicle].length,VEHICLES[currentVehicle].width,col(PAINTS[paintIndex][0],PAINTS[paintIndex][1],PAINTS[paintIndex][2]),currentVehicle,1,engineStage[currentVehicle]>0);
   drawHud();
   gsKit_queue_exec(gs);gsKit_sync_flip(gs);gsKit_queue_reset(gs->Per_Queue);
